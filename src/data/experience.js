@@ -1,0 +1,35 @@
+export const experience = [
+  {
+    period: "2022 · 2026",
+    role: "Digital Marketing Executive",
+    company: "CRM Enterprises Pvt Ltd",
+    location: "Hyderabad, India",
+    highlights: [
+      "Ran WhatsApp Business API marketing: **20+ campaigns monthly** reaching **10,000+ unique contacts**.",
+      "Managed chatbot workflows and automation for enquiries, lead capture, qualification and follow-ups, generating **350+ leads**.",
+      "Contributed to **40%+ higher audience engagement** and **25% improved customer retention**.",
+      "Developed B2B/B2C digital strategies and managed social media across Instagram, Facebook, X, LinkedIn and YouTube.",
+      "Managed Google Business Profile updates, listings and posts to improve local SEO and local search visibility.",
+      "Planned monthly content calendars and published across social, email and other channels, aligned with promotions and events.",
+      "Created, edited and published **500+** posts, stories, reels, videos and graphics using copywriting, photography, videography and AI-assisted content.",
+      "Coordinated with influencers, media partners, agencies and dealers on campaigns, brand visibility, PR and promotions.",
+      "Analysed engagement, ROI and marketing spend to optimise budget allocation.",
+      "Handled GeM e-commerce operations: purchase orders, order processing, tracking and fulfilment coordination.",
+    ],
+  },
+  {
+    period: "2017 · 2022",
+    role: "Sales & Product Trainer",
+    company: "Flash Solutions Pvt Ltd",
+    location: "Hyderabad, India",
+    highlights: [
+      "Delivered product, sales technique and customer engagement training to **60+ employees monthly**.",
+      "Improved new-employee performance by **20% within two months** and reduced training time by **25%**.",
+      "Analysed Mi Retail App data, contributing to an average **15% improvement in sales** after training.",
+      "Managed route-based training and field performance for Mi Buddies and MiTr across Mi Stores and Mi Preferred Partner outlets.",
+      "Conducted daily Planned Journey Plan (PJP) visits covering **50+ retail stores** monthly.",
+      "Built training materials and ran sessions with presentations, role-play, weekly quizzes and demonstrations.",
+      "Monitored daily KRA/KPI performance and worked with ASMs and TSMs on field execution.",
+    ],
+  },
+];

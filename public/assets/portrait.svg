@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img" aria-labelledby="t">
+  <title id="t">Illustrated portrait of a man with a faceless, featureless head</title>
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c98a68"/>
+      <stop offset="0.55" stop-color="#b8775a"/>
+      <stop offset="0.85" stop-color="#9c5a48"/>
+      <stop offset="1" stop-color="#e2384a"/>
+    </linearGradient>
+    <linearGradient id="neck" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8f5442"/>
+      <stop offset="0.8" stop-color="#7a4234"/>
+      <stop offset="1" stop-color="#c22c3c"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a1d1a"/>
+      <stop offset="0.7" stop-color="#140d0c"/>
+      <stop offset="1" stop-color="#5a1219"/>
+    </linearGradient>
+    <linearGradient id="coat" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1b1e2b"/>
+      <stop offset="0.6" stop-color="#11131c"/>
+      <stop offset="1" stop-color="#3a0f17"/>
+    </linearGradient>
+    <linearGradient id="knit" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2b2f3f"/>
+      <stop offset="0.7" stop-color="#1c1f2b"/>
+      <stop offset="1" stop-color="#7a1a26"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.6" cy="0.45" r="0.5">
+      <stop offset="0" stop-color="#e32b3c" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#e32b3c" stop-opacity="0"/>
+    </radialGradient>
+    <style>
+      .float { animation: float 6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+      .f2 { animation-delay: -2s; animation-duration: 7s; }
+      .f3 { animation-delay: -4s; animation-duration: 5.5s; }
+      .pulse { animation: pulse 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+      .bar { animation: grow 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom; }
+      .b2 { animation-delay: -0.8s; } .b3 { animation-delay: -1.6s; }
+      @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-14px) } }
+      @keyframes pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.15) } }
+      @keyframes grow { 0%,100% { transform: scaleY(0.6) } 50% { transform: scaleY(1) } }
+      @media (prefers-reduced-motion: reduce) { .float, .pulse, .bar { animation: none } }
+    </style>
+  </defs>
+
+  <ellipse cx="330" cy="360" rx="262" ry="330" fill="url(#glow)"/>
+
+  <!-- shoulders / coat -->
+  <path d="M40 800 C 50 650, 140 585, 250 560 L 300 600 L 360 560 C 470 580, 560 650, 575 800 Z" fill="url(#coat)"/>
+  <!-- lapels -->
+  <path d="M250 560 L 300 690 L 268 800 L 205 800 L 228 640 Z" fill="#0c0e15"/>
+  <path d="M360 560 L 300 690 L 335 800 L 400 800 L 380 640 Z" fill="#0c0e15"/>
+  <path d="M362 562 L 300 690 L 316 712 L 386 600 Z" fill="#5b1520" opacity="0.55"/>
+  <!-- turtleneck -->
+  <path d="M245 520 C 250 600, 290 640, 300 700 C 312 640, 352 600, 360 520 Z" fill="url(#knit)"/>
+  <path d="M240 512 C 270 540, 335 540, 366 512 L 364 548 C 335 572, 270 572, 242 548 Z" fill="#2f3446"/>
+  <!-- neck -->
+  <path d="M252 410 L 254 528 C 280 548, 334 548, 358 528 L 362 400 Z" fill="url(#neck)"/>
+
+  <!-- head: faceless oval -->
+  <path d="M300 150 C 382 150, 418 220, 412 310 C 406 392, 368 452, 304 456 C 236 452, 196 392, 192 310 C 188 222, 222 150, 300 150 Z" fill="url(#skin)"/>
+  <!-- soft shading only, no facial features -->
+  <path d="M300 430 C 340 428, 372 400, 388 360 C 380 420, 345 452, 304 456 C 270 454, 245 440, 228 418 C 250 428, 275 432, 300 430 Z" fill="#7d4334" opacity="0.35"/>
+  <!-- ear -->
+  <path d="M405 290 C 432 284, 440 318, 430 344 C 424 360, 410 364, 402 356 Z" fill="#a05f4a"/>
+  <path d="M405 290 C 432 284, 440 318, 430 344" fill="none" stroke="#e32b3c" stroke-width="4" opacity="0.8"/>
+  <path d="M195 300 C 184 300, 180 330, 192 350" fill="none" stroke="#8a4c3b" stroke-width="3" opacity="0.6"/>
+
+  <!-- hair -->
+  <path d="M198 336 C 176 240, 210 140, 292 122 C 362 106, 426 136, 438 200 C 444 240, 432 278, 418 300 C 414 262, 404 236, 384 222 C 350 232, 300 226, 262 206 C 232 228, 212 268, 208 336 Z" fill="url(#hair)"/>
+  <path d="M262 206 C 300 168, 362 160, 404 186 C 372 172, 320 176, 262 206 Z" fill="#3b2a25" opacity="0.8"/>
+  <path d="M300 128 C 360 116, 420 144, 434 204" fill="none" stroke="#e32b3c" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- rim light along jaw and shoulder -->
+  <path d="M412 312 C 406 392, 368 452, 304 456" fill="none" stroke="#ff4a5a" stroke-width="4" opacity="0.65"/>
+  <path d="M360 560 C 470 580, 560 650, 575 800" fill="none" stroke="#e32b3c" stroke-width="5" opacity="0.6"/>
+
+  <!-- floating marketing badges -->
+  <g class="float">
+    <rect x="58" y="210" width="104" height="64" rx="18" fill="#161616" stroke="#2c2c2c"/>
+    <path class="pulse" d="M88 236 c0-8 12-12 16-3 c4-9 16-5 16 3 c0 10-16 18-16 18 s-16-8-16-18z" fill="#e32b3c"/>
+    <rect x="128" y="236" width="20" height="6" rx="3" fill="#f2efeb" opacity="0.8"/>
+    <rect x="128" y="248" width="14" height="6" rx="3" fill="#f2efeb" opacity="0.45"/>
+  </g>
+  <g class="float f2">
+    <rect x="452" y="70" width="112" height="84" rx="18" fill="#161616" stroke="#2c2c2c"/>
+    <rect class="bar" x="474" y="112" width="14" height="28" rx="3" fill="#a09c9a"/>
+    <rect class="bar b2" x="498" y="98" width="14" height="42" rx="3" fill="#f2efeb"/>
+    <rect class="bar b3" x="522" y="84" width="14" height="56" rx="3" fill="#e32b3c"/>
+  </g>
+  <g class="float f3">
+    <path d="M470 430 h86 a16 16 0 0 1 16 16 v34 a16 16 0 0 1 -16 16 h-58 l-20 16 v-16 h-8 a16 16 0 0 1 -16 -16 v-34 a16 16 0 0 1 16 -16z" fill="#161616" stroke="#2c2c2c"/>
+    <circle cx="490" cy="463" r="5" fill="#f2efeb"/>
+    <circle cx="510" cy="463" r="5" fill="#f2efeb" opacity="0.7"/>
+    <circle cx="530" cy="463" r="5" fill="#e32b3c"/>
+  </g>
+</svg>
