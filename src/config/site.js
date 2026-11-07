@@ -11,7 +11,7 @@ export const site = {
     wordmark: "SIRUDDIN",
     profession: "Digital Marketing Professional",
     roleLine1: "Digital Marketer",
-    roleLine2: "Sales & Product Trainer",
+    roleLine2: "And content creator",
     shortRole: "Marketer & Trainer",
     location: "Dubai, UAE",
     availability: "Available immediately",
@@ -24,7 +24,8 @@ export const site = {
       "That grounding in what makes customers buy shaped my move into digital marketing at CRM Enterprises. There I ran social media across Instagram, Facebook, X, LinkedIn and YouTube, managed Google Business Profile and local SEO, produced 500+ digital creatives, and built WhatsApp Business API campaigns and chatbot workflows that reached 10,000+ contacts and generated 350+ leads.",
     ],
     quote: ["From content calendar and creatives,", "to leads you can count."],
-    portrait: "assets/portrait.svg",
+    portrait: "assets/avatar/avatar.webp",   // 3D avatar layers live in assets/avatar/; old illustration: assets/portrait.svg
+    portraitAlt: "3D animated avatar of Siruddin Pasha in a navy bomber jacket",
     resume: "assets/Shaik_Siruddin_Pasha_CV.pdf",
     languages: [
       { name: "English", level: "C1" },
@@ -39,7 +40,8 @@ export const site = {
     email: "shairuddin.ae@gmail.com",
     phone: "+971 55 655 3066",
     whatsapp: "971556553066",
-    whatsappMessage: "Hi Siruddin, I saw your portfolio and would like to discuss a project.",
+    whatsappMessage:
+      "Hello, I visited your portfolio and reviewed your professional experience.\n\nI would like to know if you are currently available for full-time opportunities in Dubai or open to discussing a potential project or professional collaboration.\n\nCould you please share your availability and preferred way to proceed?",
     linkedin: "https://www.linkedin.com/in/shaik-siruddin-pasha",
     linkedinLabel: "shaik-siruddin-pasha",
   },

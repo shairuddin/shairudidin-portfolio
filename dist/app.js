@@ -21723,7 +21723,7 @@
   });
 
   // src/main.jsx
-  var import_react6 = __toESM(require_react(), 1);
+  var import_react7 = __toESM(require_react(), 1);
   var import_client = __toESM(require_client(), 1);
 
   // src/lib/motion.js
@@ -21836,7 +21836,7 @@
       wordmark: "SIRUDDIN",
       profession: "Digital Marketing Professional",
       roleLine1: "Digital Marketer",
-      roleLine2: "Sales & Product Trainer",
+      roleLine2: "And content creator",
       shortRole: "Marketer & Trainer",
       location: "Dubai, UAE",
       availability: "Available immediately",
@@ -21848,7 +21848,9 @@
         "That grounding in what makes customers buy shaped my move into digital marketing at CRM Enterprises. There I ran social media across Instagram, Facebook, X, LinkedIn and YouTube, managed Google Business Profile and local SEO, produced 500+ digital creatives, and built WhatsApp Business API campaigns and chatbot workflows that reached 10,000+ contacts and generated 350+ leads."
       ],
       quote: ["From content calendar and creatives,", "to leads you can count."],
-      portrait: "assets/portrait.svg",
+      portrait: "assets/avatar/avatar.webp",
+      // 3D avatar layers live in assets/avatar/; old illustration: assets/portrait.svg
+      portraitAlt: "3D animated avatar of Siruddin Pasha in a navy bomber jacket",
       resume: "assets/Shaik_Siruddin_Pasha_CV.pdf",
       languages: [
         { name: "English", level: "C1" },
@@ -21862,7 +21864,7 @@
       email: "shairuddin.ae@gmail.com",
       phone: "+971 55 655 3066",
       whatsapp: "971556553066",
-      whatsappMessage: "Hi Siruddin, I saw your portfolio and would like to discuss a project.",
+      whatsappMessage: "Hello, I visited your portfolio and reviewed your professional experience.\n\nI would like to know if you are currently available for full-time opportunities in Dubai or open to discussing a potential project or professional collaboration.\n\nCould you please share your availability and preferred way to proceed?",
       linkedin: "https://www.linkedin.com/in/shaik-siruddin-pasha",
       linkedinLabel: "shaik-siruddin-pasha"
     },
@@ -22030,13 +22032,191 @@
   }
 
   // src/components/Hero.jsx
+  var import_react4 = __toESM(require_react(), 1);
+
+  // src/components/Avatar3D.jsx
   var import_react3 = __toESM(require_react(), 1);
   var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  var BASE = "assets/avatar/";
+  var CARDS = [
+    { k: "bars", x: 77.6, y: 5.8, w: 16.8, z: 140, dur: 7, delay: -1, label: "Analytics bar chart" },
+    { k: "growth", x: 6.8, y: 19.3, w: 13.7, z: 170, dur: 6.2, delay: -3, label: "Growth chart" },
+    { k: "play", x: 83.9, y: 31.6, w: 11.5, z: 110, dur: 5.4, delay: -2, label: "Video play button" },
+    { k: "timeline", x: 6, y: 49.8, w: 20, z: 200, dur: 7.6, delay: -4.5, label: "Video editing timeline" },
+    { k: "ad", x: 76.6, y: 51.3, w: 17.2, z: 180, dur: 6.6, delay: -0.5, label: "Ad campaign card" }
+  ];
+  var VERT = `attribute vec2 p; varying vec2 v;
+void main(){ v = vec2(p.x * .5 + .5, .5 - p.y * .5); gl_Position = vec4(p, 0., 1.); }`;
+  var FRAG = `precision mediump float; varying vec2 v;
+uniform sampler2D img; uniform sampler2D dep; uniform vec2 m;
+void main(){
+  float d = texture2D(dep, v).r;
+  vec2 off = m * (d - .42) * vec2(.03, .022);
+  // two-step lookup reduces stretching at depth edges
+  float d2 = texture2D(dep, v - off * .5).r;
+  off = m * (d2 - .42) * vec2(.03, .022);
+  gl_FragColor = texture2D(img, v - off);
+}`;
+  function loadImage(src) {
+    return new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = src;
+    });
+  }
+  function startGL(canvas, getM) {
+    const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false });
+    if (!gl) return null;
+    const sh = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+    gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, "p");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    const tex = (unit, image) => {
+      const t = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    };
+    const uM = gl.getUniformLocation(prog, "m");
+    gl.uniform1i(gl.getUniformLocation(prog, "img"), 0);
+    gl.uniform1i(gl.getUniformLocation(prog, "dep"), 1);
+    return {
+      setImages(img, dep) {
+        tex(0, img);
+        tex(1, dep);
+      },
+      draw() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        gl.viewport(0, 0, w, h);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        const [mx, my] = getM();
+        gl.uniform2f(uM, mx, my);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+    };
+  }
+  function Avatar3D({ alt }) {
+    const motion = useMotion();
+    const wrap = (0, import_react3.useRef)(null);
+    const canvas = (0, import_react3.useRef)(null);
+    const state = (0, import_react3.useRef)({ tx: 0, ty: 0, x: 0, y: 0, lastMove: 0 });
+    (0, import_react3.useEffect)(() => {
+      const el = wrap.current;
+      if (!el) return;
+      if (!motion) {
+        el.classList.remove("is-gl");
+        el.style.setProperty("--mx", 0);
+        el.style.setProperty("--my", 0);
+        return;
+      }
+      let raf, gl, alive = true, visible = true;
+      const s = state.current;
+      const fine = window.matchMedia("(pointer: fine)").matches;
+      const onMove = (e) => {
+        const r = el.getBoundingClientRect();
+        s.tx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2)));
+        s.ty = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height * 0.4)) / (window.innerHeight / 2)));
+        s.lastMove = performance.now();
+      };
+      if (fine) window.addEventListener("pointermove", onMove, { passive: true });
+      const io = new IntersectionObserver(([e]) => {
+        visible = e.isIntersecting;
+        if (visible) loop();
+      }, { threshold: 0 });
+      io.observe(el);
+      const loop = () => {
+        cancelAnimationFrame(raf);
+        if (!alive || !visible) return;
+        const t = performance.now();
+        if (!fine || t - s.lastMove > 2500) {
+          s.tx = Math.sin(t / 2600) * 0.45;
+          s.ty = Math.cos(t / 3400) * 0.22;
+        }
+        s.x += (s.tx - s.x) * 0.06;
+        s.y += (s.ty - s.y) * 0.06;
+        el.style.setProperty("--mx", s.x.toFixed(4));
+        el.style.setProperty("--my", s.y.toFixed(4));
+        if (gl) gl.draw();
+        raf = requestAnimationFrame(loop);
+      };
+      gl = startGL(canvas.current, () => [s.x, s.y]);
+      if (gl) {
+        Promise.all([loadImage(BASE + "avatar.webp"), loadImage(BASE + "depth.webp")]).then(([img, dep]) => {
+          if (!alive) return;
+          gl.setImages(img, dep);
+          gl.draw();
+          el.classList.add("is-gl");
+        }).catch(() => {
+          gl = null;
+        });
+      }
+      loop();
+      return () => {
+        alive = false;
+        cancelAnimationFrame(raf);
+        io.disconnect();
+        window.removeEventListener("pointermove", onMove);
+      };
+    }, [motion]);
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "avatar3d", ref: wrap, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "avatar3d__scene", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "avatar3d__glow", "aria-hidden": "true" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "avatar3d__char", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("img", { src: BASE + "avatar.webp", alt, width: "1792", height: "2400", fetchpriority: "high" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("canvas", { ref: canvas, "aria-hidden": "true" })
+      ] }),
+      CARDS.map((c) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        "div",
+        {
+          className: `avatar3d__card avatar3d__card--${c.k}`,
+          style: { left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%`, "--z": `${c.z}px`, "--dur": `${c.dur}s`, "--delay": `${c.delay}s` },
+          children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "avatar3d__float", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("img", { src: `${BASE}card-${c.k}.webp`, alt: "", loading: "eager" }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "avatar3d__shine", "aria-hidden": "true" }),
+            c.k === "play" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "avatar3d__pulse", "aria-hidden": "true" }),
+            c.k === "ad" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "avatar3d__ping", "aria-hidden": "true" }),
+            c.k === "growth" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "avatar3d__spark", "aria-hidden": "true" }),
+            c.k === "timeline" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "avatar3d__head", "aria-hidden": "true" }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "sr-only", children: c.label })
+          ] })
+        },
+        c.k
+      ))
+    ] }) });
+  }
+
+  // src/components/Hero.jsx
+  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
   function Hero() {
     const { identity, heroStats } = site;
     const motion = useMotion();
-    const portraitRef = (0, import_react3.useRef)(null);
-    (0, import_react3.useEffect)(() => {
+    const portraitRef = (0, import_react4.useRef)(null);
+    (0, import_react4.useEffect)(() => {
       if (!motion) {
         if (portraitRef.current) portraitRef.current.style.transform = "";
         return;
@@ -22055,78 +22235,322 @@
         cancelAnimationFrame(raf);
       };
     }, [motion]);
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("section", { className: "hero", id: "top", "aria-labelledby": "hero-title", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "hero__top", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "hero__roles", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "accent", children: identity.roleLine1 }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: identity.roleLine2 })
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("section", { className: "hero", id: "top", "aria-labelledby": "hero-title", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "hero__top", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "hero__roles", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "accent", children: identity.roleLine1 }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: identity.roleLine2 })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "hero__status", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dot", "aria-hidden": "true" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "hero__status", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dot", "aria-hidden": "true" }),
           identity.availability
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "hero__stage", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "hero__bigword", "aria-hidden": "true", children: identity.headlineWord }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "hero__portrait", ref: portraitRef, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("img", { src: identity.portrait, alt: "Illustrated portrait of Siruddin", width: "600", height: "800", fetchpriority: "high" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "hero__copy", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "hello script", children: "Hello, I\u2019m" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("h1", { id: "hero-title", className: "hero__name", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "hero__stage", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "hero__bigword", "aria-hidden": "true", children: identity.headlineWord }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "hero__portrait", ref: portraitRef, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Avatar3D, { alt: identity.portraitAlt }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "hero__copy", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "hello script", children: "Hello, I\u2019m" }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("h1", { id: "hero-title", className: "hero__name", children: [
             identity.firstName.toUpperCase(),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "accent", children: "." }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "sr-only", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "accent", children: "." }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "sr-only", children: [
               " (",
               identity.fullName,
               "), ",
               identity.profession
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "hero__role", children: identity.shortRole }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "hero__tagline", children: identity.tagline }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "hero__intro", children: identity.intro }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "hero__ctas", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("a", { href: "#work", className: "btn btn--accent", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "hero__role", children: identity.shortRole }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "hero__tagline", children: identity.tagline }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "hero__intro", children: identity.intro }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "hero__ctas", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("a", { href: "#work", className: "btn btn--accent", children: [
               "See my work ",
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ArrowDown, { width: 16, height: 16 })
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(ArrowDown, { width: 16, height: 16 })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("a", { href: identity.resume, className: "btn btn--ghost", download: true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("a", { href: identity.resume, className: "btn btn--ghost", download: true, children: [
               "Download CV ",
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Download, { width: 16, height: 16 })
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Download, { width: 16, height: 16 })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "hero__loc", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MapPin, { width: 14, height: 14 }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "hero__loc", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(MapPin, { width: 14, height: 14 }),
             " ",
             identity.location
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("ul", { className: "hero__stats", "aria-label": "Highlights", children: heroStats.map((s) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("li", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("strong", { children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Counter, { value: s.value, suffix: s.suffix }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("ul", { className: "hero__stats", "aria-label": "Highlights", children: heroStats.map((s) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("strong", { children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Counter, { value: s.value, suffix: s.suffix }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { children: [
             s.label[0],
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("br", {}),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("br", {}),
             s.label[1]
           ] })
         ] }, s.label.join(" "))) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("a", { href: "#work", className: "hero__scroll", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "line", "aria-hidden": "true" }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("a", { href: "#work", className: "hero__scroll", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "line", "aria-hidden": "true" }),
         "Scroll to discover"
       ] })
     ] });
   }
 
   // src/components/Work.jsx
-  var import_react4 = __toESM(require_react(), 1);
+  var import_react5 = __toESM(require_react(), 1);
 
   // src/data/projects.js
   var categories = ["Video & Reels", "Graphic Design", "Logo Design", "Marketing Plans", "Influencer & Social", "AI Voiceovers"];
+  var industries = [
+    {
+      "id": "healthcare",
+      "name": "Healthcare",
+      "blurb": "Hospitals, clinics and doctors: patient stories, awareness videos, branding and content plans.",
+      "clients": [
+        {
+          "id": "arogya-hospitals",
+          "name": "Arogya Hospitals",
+          "count": 16
+        },
+        {
+          "id": "yalamaddi-hospitals",
+          "name": "Yalamaddi Hospitals",
+          "count": 6
+        },
+        {
+          "id": "hospital-and-doctor-videos",
+          "name": "Hospital & doctor videos",
+          "count": 19
+        },
+        {
+          "id": "dr-rajitha-s-clinic",
+          "name": "Dr. Rajitha's Clinic",
+          "count": 2
+        },
+        {
+          "id": "mathrushree-fertility",
+          "name": "Mathrushree Fertility",
+          "count": 3
+        },
+        {
+          "id": "oncology",
+          "name": "Oncology",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "education",
+      "name": "Education",
+      "blurb": "Schools, colleges and tuition centres: admissions campaigns, events, reels and identity.",
+      "clients": [
+        {
+          "id": "the-conroy-school",
+          "name": "The Conroy School",
+          "count": 26
+        },
+        {
+          "id": "cedar-valley-school",
+          "name": "Cedar Valley School",
+          "count": 9
+        },
+        {
+          "id": "sri-cv-raman-junior-college",
+          "name": "Sri CV Raman Junior College",
+          "count": 8
+        },
+        {
+          "id": "oxford-high-school",
+          "name": "Oxford High School",
+          "count": 4
+        },
+        {
+          "id": "agrani-college",
+          "name": "Agrani College",
+          "count": 3
+        },
+        {
+          "id": "harvest-public-school",
+          "name": "Harvest Public School",
+          "count": 1
+        },
+        {
+          "id": "excellent-tuition-point",
+          "name": "Excellent Tuition Point",
+          "count": 2
+        },
+        {
+          "id": "other-schools",
+          "name": "Other schools",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "retail",
+      "name": "Retail & Consumer",
+      "blurb": "Electronics, lifestyle and home brands: launches, festive campaigns, offers and product creatives.",
+      "clients": [
+        {
+          "id": "sri-shyam-baba-electronics",
+          "name": "Sri Shyam Baba Electronics",
+          "count": 32
+        },
+        {
+          "id": "gamlawala",
+          "name": "Gamlawala",
+          "count": 8
+        },
+        {
+          "id": "the-pottery-co",
+          "name": "The Pottery Co",
+          "count": 1
+        },
+        {
+          "id": "srs-silvers",
+          "name": "SRS Silvers",
+          "count": 1
+        },
+        {
+          "id": "rainbow-world",
+          "name": "Rainbow World",
+          "count": 1
+        },
+        {
+          "id": "jf-men-s-store",
+          "name": "JF Men's Store",
+          "count": 1
+        },
+        {
+          "id": "golden-source",
+          "name": "Golden Source",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "tech",
+      "name": "Tech, AI & Creators",
+      "blurb": "AI brands, software companies and creators: channel branding, intros, thumbnails and marketing plans.",
+      "clients": [
+        {
+          "id": "ai-brief",
+          "name": "AI Brief",
+          "count": 20
+        },
+        {
+          "id": "ai-video-experiments",
+          "name": "AI video experiments",
+          "count": 3
+        },
+        {
+          "id": "suvidha-soft",
+          "name": "Suvidha Soft",
+          "count": 5
+        },
+        {
+          "id": "wotg",
+          "name": "WOTG",
+          "count": 2
+        },
+        {
+          "id": "mahesh-devalla",
+          "name": "Mahesh Devalla",
+          "count": 7
+        },
+        {
+          "id": "gully-guide",
+          "name": "Gully Guide",
+          "count": 2
+        },
+        {
+          "id": "ignexa-solutions",
+          "name": "Ignexa Solutions",
+          "count": 2
+        },
+        {
+          "id": "mindx",
+          "name": "Mindx",
+          "count": 2
+        },
+        {
+          "id": "campus-app",
+          "name": "Campus App",
+          "count": 1
+        },
+        {
+          "id": "vintrix",
+          "name": "Vintrix",
+          "count": 1
+        },
+        {
+          "id": "personal-brand",
+          "name": "Personal brand",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "services",
+      "name": "Real Estate & Services",
+      "blurb": "Property, construction, legal and consumer services: ads, sliders and launch creatives.",
+      "clients": [
+        {
+          "id": "madanvasu-real-estate",
+          "name": "Madanvasu Real Estate",
+          "count": 2
+        },
+        {
+          "id": "vs-eco-blocks",
+          "name": "VS Eco Blocks",
+          "count": 1
+        },
+        {
+          "id": "legal-firm-dubai",
+          "name": "Legal firm, Dubai",
+          "count": 1
+        },
+        {
+          "id": "pellillaperayya",
+          "name": "Pellillaperayya",
+          "count": 1
+        },
+        {
+          "id": "raj",
+          "name": "RAJ",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "community",
+      "name": "Events & Community",
+      "blurb": "Fan communities, influencer campaigns and celebrations: event recaps, reels and invitations.",
+      "clients": [
+        {
+          "id": "xfc-khammam",
+          "name": "XFC Khammam",
+          "count": 5
+        },
+        {
+          "id": "influencer-marketing",
+          "name": "Influencer marketing",
+          "count": 7
+        },
+        {
+          "id": "wedding-invitations",
+          "name": "Wedding invitations",
+          "count": 3
+        }
+      ]
+    }
+  ];
   var projects = [
     {
       "id": "video-editing-hospital-edited-videos-creative-hospital-video-6a7ed0",
       "title": "Creative hospital reel",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-creative-hospital-video-6a7ed0.mp4",
@@ -22134,7 +22558,9 @@
       "w": 540,
       "h": 960,
       "dur": 27.9,
-      "featured": 30
+      "featured": 30,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-xfc-khamma-reels-storage-emulated-0-download-mishare-lv--b65008",
@@ -22148,7 +22574,9 @@
       "w": 540,
       "h": 962,
       "dur": 21.3,
-      "featured": 29
+      "featured": 29,
+      "industry": "community",
+      "clientId": "xfc-khammam"
     },
     {
       "id": "video-editing-xfc-khamma-reels-launch-event-recap-edit-60eb21",
@@ -22162,7 +22590,9 @@
       "w": 540,
       "h": 960,
       "dur": 38.1,
-      "featured": 28
+      "featured": 28,
+      "industry": "community",
+      "clientId": "xfc-khammam"
     },
     {
       "id": "video-editing-ai-videos-edited-arogya-hospitals-emotional-concept-ed2360",
@@ -22176,7 +22606,9 @@
       "w": 540,
       "h": 960,
       "dur": 85.3,
-      "featured": 18
+      "featured": 18,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "video-editing-international-work-dubai-lawyer-legal-mobile-video-8f5802",
@@ -22190,7 +22622,9 @@
       "w": 540,
       "h": 960,
       "dur": 23.6,
-      "featured": 17
+      "featured": 17,
+      "industry": "services",
+      "clientId": "legal-firm-dubai"
     },
     {
       "id": "graphic-desinging-international-work-black-and-beige-modern-book-launc-121fc8",
@@ -22203,7 +22637,9 @@
       "thumb": "assets/work/graphic-desinging-international-work-black-and-beige-modern-book-launc-121fc8-t.webp",
       "w": 2160,
       "h": 2700,
-      "featured": 16
+      "featured": 16,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "video-editing-shyam-baba-company-blue-red-neon-coming-soon-mobile-vide-9087d7",
@@ -22217,7 +22653,9 @@
       "w": 540,
       "h": 960,
       "dur": 10.1,
-      "featured": 15
+      "featured": 15,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
     },
     {
       "id": "graphic-desinging-hospital-desings-arogya-hospital-we-are-hiring-insta-2a49f5",
@@ -22230,7 +22668,9 @@
       "thumb": "assets/work/graphic-desinging-hospital-desings-arogya-hospital-we-are-hiring-insta-2a49f5-t.webp",
       "w": 2160,
       "h": 3840,
-      "featured": 14
+      "featured": 14,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-admissions-2026-1-8a2262",
@@ -22243,7 +22683,9 @@
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-admissions-2026-1-8a2262-t.webp",
       "w": 2700,
       "h": 3375,
-      "featured": 13
+      "featured": 13,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-1-c04056",
@@ -22256,26 +22698,30 @@
       "thumb": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-1-c04056-t.webp",
       "w": 2560,
       "h": 1440,
-      "featured": 12
+      "featured": 12,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-shaym-baba-company-white-bold-gradient-earbuds-2-pro-b297dd",
       "title": 'AirPods 2: "Less noise, more sound"',
       "category": "Graphic Design",
-      "client": "Shyam Baba Company",
+      "client": "Sri Shyam Baba Electronics",
       "type": "image",
       "kind": "Design",
       "src": "assets/work/graphic-desinging-shaym-baba-company-white-bold-gradient-earbuds-2-pro-b297dd.webp",
       "thumb": "assets/work/graphic-desinging-shaym-baba-company-white-bold-gradient-earbuds-2-pro-b297dd-t.webp",
       "w": 1350,
       "h": 1350,
-      "featured": 11
+      "featured": 11,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
     },
     {
       "id": "video-editing-shyam-baba-company-krishna-new-year-aa96f0",
       "title": "Krishna New Year 2025",
       "category": "Video & Reels",
-      "client": "Shyam Baba Company",
+      "client": "Sri Shyam Baba Electronics",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-shyam-baba-company-krishna-new-year-aa96f0.mp4",
@@ -22283,7 +22729,9 @@
       "w": 540,
       "h": 960,
       "dur": 17.4,
-      "featured": 10
+      "featured": 10,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
     },
     {
       "id": "influncer-marketing-and-social-media-37-49-252-ec783a",
@@ -22296,7 +22744,9 @@
       "thumb": "assets/work/influncer-marketing-and-social-media-37-49-252-ec783a-t.webp",
       "w": 4619,
       "h": 2598,
-      "featured": 9
+      "featured": 9,
+      "industry": "community",
+      "clientId": "influencer-marketing"
     },
     {
       "id": "graphic-desinging-hospital-desings-yalamaddi-hospitals-creative-rabind-470fd7",
@@ -22309,7 +22759,9 @@
       "thumb": "assets/work/graphic-desinging-hospital-desings-yalamaddi-hospitals-creative-rabind-470fd7-t.webp",
       "w": 2160,
       "h": 2700,
-      "featured": 8
+      "featured": 8,
+      "industry": "healthcare",
+      "clientId": "yalamaddi-hospitals"
     },
     {
       "id": "video-editing-international-work-golden-source-promo-74db53",
@@ -22323,7 +22775,9 @@
       "w": 540,
       "h": 960,
       "dur": 59.6,
-      "featured": 7
+      "featured": 7,
+      "industry": "retail",
+      "clientId": "golden-source"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-admissions-2026-2-7ab974",
@@ -22336,7 +22790,9 @@
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-admissions-2026-2-7ab974-t.webp",
       "w": 2700,
       "h": 3375,
-      "featured": 6
+      "featured": 6,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-suvidha-suvidha-modern-mobile-app-development-promot-5eca6c",
@@ -22349,7 +22805,9 @@
       "thumb": "assets/work/graphic-desinging-suvidha-suvidha-modern-mobile-app-development-promot-5eca6c-t.webp",
       "w": 3240,
       "h": 3240,
-      "featured": 5
+      "featured": 5,
+      "industry": "tech",
+      "clientId": "suvidha-soft"
     },
     {
       "id": "video-editing-ai-videos-edited-ai-brief-short-intro-video-by-animated--5c3e10",
@@ -22363,20 +22821,24 @@
       "w": 540,
       "h": 960,
       "dur": 55.4,
-      "featured": 4
+      "featured": 4,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-logo-designs-arogya-og-logo-ff0495",
       "title": "Arogya Hospitals logo",
       "category": "Logo Design",
-      "client": "Brand identity",
+      "client": "Arogya Hospitals",
       "type": "image",
       "kind": "Logo",
       "src": "assets/work/graphic-desinging-logo-designs-arogya-og-logo-ff0495.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-arogya-og-logo-ff0495-t.webp",
       "w": 4e3,
       "h": 4e3,
-      "featured": 3
+      "featured": 3,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "video-editing-shyam-baba-company-green-and-beige-modern-minimalist-hou-0b41c4",
@@ -22390,20 +22852,24 @@
       "w": 540,
       "h": 960,
       "dur": 16,
-      "featured": 2
+      "featured": 2,
+      "industry": "retail",
+      "clientId": "gamlawala"
     },
     {
       "id": "graphic-desinging-shaym-baba-company-black-and-grey-ui-digitalism-fash-08ed5e",
       "title": "Apple Watch special offer post",
       "category": "Graphic Design",
-      "client": "Shyam Baba Company",
+      "client": "Sri Shyam Baba Electronics",
       "type": "image",
       "kind": "Design",
       "src": "assets/work/graphic-desinging-shaym-baba-company-black-and-grey-ui-digitalism-fash-08ed5e.webp",
       "thumb": "assets/work/graphic-desinging-shaym-baba-company-black-and-grey-ui-digitalism-fash-08ed5e-t.webp",
       "w": 1890,
       "h": 2363,
-      "featured": 1
+      "featured": 1,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
     },
     {
       "id": "video-editing-international-work-ai-brief-green-screen-sample-d48c4f",
@@ -22416,7 +22882,9 @@
       "thumb": "assets/work/video-editing-international-work-ai-brief-green-screen-sample-d48c4f-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 16
+      "dur": 16,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "video-editing-international-work-ai-breif-intro-1-5620af",
@@ -22429,7 +22897,9 @@
       "thumb": "assets/work/video-editing-international-work-ai-breif-intro-1-5620af-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 9.5
+      "dur": 9.5,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "video-editing-international-work-ai-breif-intro-12-b7147d",
@@ -22442,7 +22912,9 @@
       "thumb": "assets/work/video-editing-international-work-ai-breif-intro-12-b7147d-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 10.8
+      "dur": 10.8,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "video-editing-international-work-ai-breif-outro-1-d16968",
@@ -22455,7 +22927,9 @@
       "thumb": "assets/work/video-editing-international-work-ai-breif-outro-1-d16968-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 5.7
+      "dur": 5.7,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "video-editing-international-work-ai-brief-teal-and-black-modern-artifi-770294",
@@ -22468,7 +22942,9 @@
       "thumb": "assets/work/video-editing-international-work-ai-brief-teal-and-black-modern-artifi-770294-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 15.1
+      "dur": 15.1,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "video-editing-international-work-ai-brief-typography-animation-c4cfe6",
@@ -22481,46 +22957,54 @@
       "thumb": "assets/work/video-editing-international-work-ai-brief-typography-animation-c4cfe6-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 4.5
+      "dur": 4.5,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "video-editing-ai-videos-edited-vid-20251220-112949-548-bsl-c5f2e1",
       "title": "AI talking-head reel 1",
       "category": "Video & Reels",
-      "client": "AI video production",
+      "client": "AI video experiments",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-ai-videos-edited-vid-20251220-112949-548-bsl-c5f2e1.mp4",
       "thumb": "assets/work/video-editing-ai-videos-edited-vid-20251220-112949-548-bsl-c5f2e1-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 39.6
+      "dur": 39.6,
+      "industry": "tech",
+      "clientId": "ai-video-experiments"
     },
     {
       "id": "video-editing-ai-videos-edited-vid-20251227-105621-882-bsl-04b92e",
       "title": "AI talking-head reel 2",
       "category": "Video & Reels",
-      "client": "AI video production",
+      "client": "AI video experiments",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-ai-videos-edited-vid-20251227-105621-882-bsl-04b92e.mp4",
       "thumb": "assets/work/video-editing-ai-videos-edited-vid-20251227-105621-882-bsl-04b92e-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 36.3
+      "dur": 36.3,
+      "industry": "tech",
+      "clientId": "ai-video-experiments"
     },
     {
       "id": "video-editing-ai-videos-edited-lv-0-20251009233356-1df62f",
       "title": "AI-edited social reel",
       "category": "Video & Reels",
-      "client": "AI video production",
+      "client": "AI video experiments",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-ai-videos-edited-lv-0-20251009233356-1df62f.mp4",
       "thumb": "assets/work/video-editing-ai-videos-edited-lv-0-20251009233356-1df62f-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 33.3
+      "dur": 33.3,
+      "industry": "tech",
+      "clientId": "ai-video-experiments"
     },
     {
       "id": "video-editing-ai-videos-edited-arogya-hospital-gm-intro-02a529",
@@ -22533,7 +23017,9 @@
       "thumb": "assets/work/video-editing-ai-videos-edited-arogya-hospital-gm-intro-02a529-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 8
+      "dur": 8,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "video-editing-hospital-edited-videos-arogya-hospital-oxygen-info-video-fd55ed",
@@ -22546,7 +23032,9 @@
       "thumb": "assets/work/video-editing-hospital-edited-videos-arogya-hospital-oxygen-info-video-fd55ed-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 58
+      "dur": 58,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "video-editing-hospital-edited-videos-arogya-hospital-traditional-ugadi-156134",
@@ -22559,7 +23047,9 @@
       "thumb": "assets/work/video-editing-hospital-edited-videos-arogya-hospital-traditional-ugadi-156134-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 15
+      "dur": 15,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "video-editing-international-work-cedar-valley-viral-tom-sample-0-20260-2388a1",
@@ -22572,7 +23062,9 @@
       "thumb": "assets/work/video-editing-international-work-cedar-valley-viral-tom-sample-0-20260-2388a1-t.webp",
       "w": 762,
       "h": 540,
-      "dur": 16.3
+      "dur": 16.3,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "video-editing-international-work-cedar-valley-instagram-outro-sample-0-9b8bee",
@@ -22585,7 +23077,9 @@
       "thumb": "assets/work/video-editing-international-work-cedar-valley-instagram-outro-sample-0-9b8bee-t.webp",
       "w": 540,
       "h": 900,
-      "dur": 5.2
+      "dur": 5.2,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "video-editing-international-work-cedar-valley-logo-animantion-1-0-2026-481c01",
@@ -22598,7 +23092,9 @@
       "thumb": "assets/work/video-editing-international-work-cedar-valley-logo-animantion-1-0-2026-481c01-t.webp",
       "w": 960,
       "h": 540,
-      "dur": 11.1
+      "dur": 11.1,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "video-editing-international-work-cedar-valley-logo-animantion-2-0-2026-20e553",
@@ -22611,7 +23107,9 @@
       "thumb": "assets/work/video-editing-international-work-cedar-valley-logo-animantion-2-0-2026-20e553-t.webp",
       "w": 960,
       "h": 540,
-      "dur": 12.1
+      "dur": 12.1,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "video-editing-international-work-cedar-valley-logo-animantion-3-0-2026-7df896",
@@ -22624,7 +23122,9 @@
       "thumb": "assets/work/video-editing-international-work-cedar-valley-logo-animantion-3-0-2026-7df896-t.webp",
       "w": 960,
       "h": 540,
-      "dur": 7.2
+      "dur": 7.2,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "video-editing-international-work-sample-cedar-valley-reel-0-2026042619-2c134d",
@@ -22637,7 +23137,9 @@
       "thumb": "assets/work/video-editing-international-work-sample-cedar-valley-reel-0-2026042619-2c134d-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 30.7
+      "dur": 30.7,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "video-editing-hospital-edited-videos-dr-rajitha-reddy-hanmakonda-hospi-268b5a",
@@ -22650,7 +23152,9 @@
       "thumb": "assets/work/video-editing-hospital-edited-videos-dr-rajitha-reddy-hanmakonda-hospi-268b5a-t.webp",
       "w": 540,
       "h": 958,
-      "dur": 51.7
+      "dur": 51.7,
+      "industry": "healthcare",
+      "clientId": "dr-rajitha-s-clinic"
     },
     {
       "id": "video-editing-international-work-smart-displays-golden-source-a3aafd",
@@ -22663,332 +23167,264 @@
       "thumb": "assets/work/video-editing-international-work-smart-displays-golden-source-a3aafd-t.webp",
       "w": 960,
       "h": 540,
-      "dur": 64.8
+      "dur": 64.8,
+      "industry": "retail",
+      "clientId": "golden-source"
     },
     {
       "id": "video-editing-hospital-edited-videos-brain-dead-person-case-video-bdcb5c",
       "title": "Brain-dead patient case story",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-brain-dead-person-case-video-bdcb5c.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-brain-dead-person-case-video-bdcb5c-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 172.2
+      "dur": 172.2,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-dr-bhpathi-intro-0d6bfc",
       "title": "Dr. Bhupathi intro",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-dr-bhpathi-intro-0d6bfc.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-dr-bhpathi-intro-0d6bfc-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 7.8
+      "dur": 7.8,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-dr-bhpathi-intro-2-63b97a",
       "title": "Dr. Bhupathi intro (short)",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-dr-bhpathi-intro-2-63b97a.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-dr-bhpathi-intro-2-63b97a-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 3.3
+      "dur": 3.3,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-dr-goutham-intro-3b890d",
       "title": "Dr. Gautam orthopaedic intro",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-dr-goutham-intro-3b890d.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-dr-goutham-intro-3b890d-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 4.9
+      "dur": 4.9,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-dr-sumanth-case-video-1-586b03",
       "title": "Dr. Sumanth case video 1",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-dr-sumanth-case-video-1-586b03.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-dr-sumanth-case-video-1-586b03-t.webp",
       "w": 540,
       "h": 958,
-      "dur": 172.2
+      "dur": 172.2,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-dr-sumanth-case-video-2-0147c4",
       "title": "Dr. Sumanth case video 2",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-dr-sumanth-case-video-2-0147c4.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-dr-sumanth-case-video-2-0147c4-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 73.4
+      "dur": 73.4,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-dr-sumanth-case-video-bc4052",
       "title": "Dr. Sumanth patient story",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-dr-sumanth-case-video-bc4052.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-dr-sumanth-case-video-bc4052-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 32.2
+      "dur": 32.2,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-fake-medicines-20260307140631-66beaa",
       "title": "Fake medicines awareness video",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-fake-medicines-20260307140631-66beaa.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-fake-medicines-20260307140631-66beaa-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 131.2
+      "dur": 131.2,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-hospital-logo-animantion-1-11fff3",
       "title": "Hospital logo animation 1",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-1-11fff3.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-1-11fff3-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 3.7
+      "dur": 3.7,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-hospital-logo-animantion-2-0efc78",
       "title": "Hospital logo animation 2",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-2-0efc78.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-2-0efc78-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 3.1
+      "dur": 3.1,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-hospital-logo-animantion-3-97f7c0",
       "title": "Hospital logo animation 3",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-3-97f7c0.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-3-97f7c0-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 3.1
+      "dur": 3.1,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-hospital-logo-animantion-4-fd37cd",
       "title": "Hospital logo animation 4",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-4-fd37cd.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-4-fd37cd-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 3.6
+      "dur": 3.6,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-hospital-logo-animantion-5-e6b10c",
       "title": "Hospital logo animation 5",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-5-e6b10c.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-hospital-logo-animantion-5-e6b10c-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 4
+      "dur": 4,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-hospital-logo-outro-animantion-1-a60011",
       "title": "Hospital outro animation 1",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-hospital-logo-outro-animantion-1-a60011.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-hospital-logo-outro-animantion-1-a60011-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 3.1
+      "dur": 3.1,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-hospital-logo-outro-animantion-2-484bb2",
       "title": "Hospital outro animation 2",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-hospital-logo-outro-animantion-2-484bb2.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-hospital-logo-outro-animantion-2-484bb2-t.webp",
       "w": 540,
       "h": 962,
-      "dur": 4.1
+      "dur": 4.1,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-pullareddy-sir-insta-270326-e98a38",
       "title": "Patient testimonial reel",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-pullareddy-sir-insta-270326-e98a38.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-pullareddy-sir-insta-270326-e98a38-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 84.6
+      "dur": 84.6,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-hospital-edited-videos-teenage-kds-awarness-info-video-47a45b",
       "title": "Teen awareness info video",
       "category": "Video & Reels",
-      "client": "Hospitals",
+      "client": "Hospital & doctor videos",
       "type": "video",
       "kind": "Reel",
       "src": "assets/work/video-editing-hospital-edited-videos-teenage-kds-awarness-info-video-47a45b.mp4",
       "thumb": "assets/work/video-editing-hospital-edited-videos-teenage-kds-awarness-info-video-47a45b-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 58.9
-    },
-    {
-      "id": "video-editing-shyam-baba-company-cream-decorative-diwali-greeting-inst-ca7a3a",
-      "title": "Diwali greeting animation",
-      "category": "Video & Reels",
-      "client": "Shyam Baba Company",
-      "type": "video",
-      "kind": "Reel",
-      "src": "assets/work/video-editing-shyam-baba-company-cream-decorative-diwali-greeting-inst-ca7a3a.mp4",
-      "thumb": "assets/work/video-editing-shyam-baba-company-cream-decorative-diwali-greeting-inst-ca7a3a-t.webp",
-      "w": 540,
-      "h": 676,
-      "dur": 9.9
-    },
-    {
-      "id": "video-editing-shyam-baba-company-dussehra-festival-mobile-video-faefdb",
-      "title": "Dussehra animated greeting",
-      "category": "Video & Reels",
-      "client": "Shyam Baba Company",
-      "type": "video",
-      "kind": "Reel",
-      "src": "assets/work/video-editing-shyam-baba-company-dussehra-festival-mobile-video-faefdb.mp4",
-      "thumb": "assets/work/video-editing-shyam-baba-company-dussehra-festival-mobile-video-faefdb-t.webp",
-      "w": 540,
-      "h": 960,
-      "dur": 8.6
-    },
-    {
-      "id": "video-editing-shyam-baba-company-green-and-maroon-traditional-minimal--7190d1",
-      "title": "Festival of Lights reel",
-      "category": "Video & Reels",
-      "client": "Shyam Baba Company",
-      "type": "video",
-      "kind": "Reel",
-      "src": "assets/work/video-editing-shyam-baba-company-green-and-maroon-traditional-minimal--7190d1.mp4",
-      "thumb": "assets/work/video-editing-shyam-baba-company-green-and-maroon-traditional-minimal--7190d1-t.webp",
-      "w": 540,
-      "h": 960,
-      "dur": 19.7
-    },
-    {
-      "id": "video-editing-shyam-baba-company-animated-happy-ganesh-chaturthi-mobil-24eb86",
-      "title": "Ganesh Chaturthi animated greeting",
-      "category": "Video & Reels",
-      "client": "Shyam Baba Company",
-      "type": "video",
-      "kind": "Reel",
-      "src": "assets/work/video-editing-shyam-baba-company-animated-happy-ganesh-chaturthi-mobil-24eb86.mp4",
-      "thumb": "assets/work/video-editing-shyam-baba-company-animated-happy-ganesh-chaturthi-mobil-24eb86-t.webp",
-      "w": 540,
-      "h": 960,
-      "dur": 18
-    },
-    {
-      "id": "video-editing-shyam-baba-company-yellow-colorful-animated-happy-new-ye-d0c62c",
-      "title": "Happy New Year 2025 animation",
-      "category": "Video & Reels",
-      "client": "Shyam Baba Company",
-      "type": "video",
-      "kind": "Reel",
-      "src": "assets/work/video-editing-shyam-baba-company-yellow-colorful-animated-happy-new-ye-d0c62c.mp4",
-      "thumb": "assets/work/video-editing-shyam-baba-company-yellow-colorful-animated-happy-new-ye-d0c62c-t.webp",
-      "w": 540,
-      "h": 960,
-      "dur": 11
-    },
-    {
-      "id": "video-editing-shyam-baba-company-brown-and-green-festive-janmashtami-i-ef1994",
-      "title": "Janmashtami greeting",
-      "category": "Video & Reels",
-      "client": "Shyam Baba Company",
-      "type": "video",
-      "kind": "Reel",
-      "src": "assets/work/video-editing-shyam-baba-company-brown-and-green-festive-janmashtami-i-ef1994.mp4",
-      "thumb": "assets/work/video-editing-shyam-baba-company-brown-and-green-festive-janmashtami-i-ef1994-t.webp",
-      "w": 540,
-      "h": 960,
-      "dur": 11.5
-    },
-    {
-      "id": "video-editing-shyam-baba-company-green-and-orange-playful-merry-christ-eb1f6d",
-      "title": "Merry Christmas animation",
-      "category": "Video & Reels",
-      "client": "Shyam Baba Company",
-      "type": "video",
-      "kind": "Reel",
-      "src": "assets/work/video-editing-shyam-baba-company-green-and-orange-playful-merry-christ-eb1f6d.mp4",
-      "thumb": "assets/work/video-editing-shyam-baba-company-green-and-orange-playful-merry-christ-eb1f6d-t.webp",
-      "w": 540,
-      "h": 960,
-      "dur": 10
-    },
-    {
-      "id": "video-editing-shyam-baba-company-orange-and-yellow-festive-style-india-e9ca13",
-      "title": "Raksha Bandhan reel",
-      "category": "Video & Reels",
-      "client": "Shyam Baba Company",
-      "type": "video",
-      "kind": "Reel",
-      "src": "assets/work/video-editing-shyam-baba-company-orange-and-yellow-festive-style-india-e9ca13.mp4",
-      "thumb": "assets/work/video-editing-shyam-baba-company-orange-and-yellow-festive-style-india-e9ca13-t.webp",
-      "w": 540,
-      "h": 960,
-      "dur": 10.5
+      "dur": 58.9,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
     },
     {
       "id": "video-editing-shyam-baba-company-coming-soon-1-day-left-mobile-video-869621",
@@ -23001,7 +23437,9 @@
       "thumb": "assets/work/video-editing-shyam-baba-company-coming-soon-1-day-left-mobile-video-869621-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 8.2
+      "dur": 8.2,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
     },
     {
       "id": "video-editing-shyam-baba-company-2-days-left-7764e7",
@@ -23014,7 +23452,9 @@
       "thumb": "assets/work/video-editing-shyam-baba-company-2-days-left-7764e7-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 19.9
+      "dur": 19.9,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
     },
     {
       "id": "video-editing-shyam-baba-company-white-modern-watch-instagram-post-95f890",
@@ -23027,7 +23467,129 @@
       "thumb": "assets/work/video-editing-shyam-baba-company-white-modern-watch-instagram-post-95f890-t.webp",
       "w": 540,
       "h": 540,
-      "dur": 15.9
+      "dur": 15.9,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "video-editing-shyam-baba-company-cream-decorative-diwali-greeting-inst-ca7a3a",
+      "title": "Diwali greeting animation",
+      "category": "Video & Reels",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "video",
+      "kind": "Reel",
+      "src": "assets/work/video-editing-shyam-baba-company-cream-decorative-diwali-greeting-inst-ca7a3a.mp4",
+      "thumb": "assets/work/video-editing-shyam-baba-company-cream-decorative-diwali-greeting-inst-ca7a3a-t.webp",
+      "w": 540,
+      "h": 676,
+      "dur": 9.9,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "video-editing-shyam-baba-company-dussehra-festival-mobile-video-faefdb",
+      "title": "Dussehra animated greeting",
+      "category": "Video & Reels",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "video",
+      "kind": "Reel",
+      "src": "assets/work/video-editing-shyam-baba-company-dussehra-festival-mobile-video-faefdb.mp4",
+      "thumb": "assets/work/video-editing-shyam-baba-company-dussehra-festival-mobile-video-faefdb-t.webp",
+      "w": 540,
+      "h": 960,
+      "dur": 8.6,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "video-editing-shyam-baba-company-green-and-maroon-traditional-minimal--7190d1",
+      "title": "Festival of Lights reel",
+      "category": "Video & Reels",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "video",
+      "kind": "Reel",
+      "src": "assets/work/video-editing-shyam-baba-company-green-and-maroon-traditional-minimal--7190d1.mp4",
+      "thumb": "assets/work/video-editing-shyam-baba-company-green-and-maroon-traditional-minimal--7190d1-t.webp",
+      "w": 540,
+      "h": 960,
+      "dur": 19.7,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "video-editing-shyam-baba-company-animated-happy-ganesh-chaturthi-mobil-24eb86",
+      "title": "Ganesh Chaturthi animated greeting",
+      "category": "Video & Reels",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "video",
+      "kind": "Reel",
+      "src": "assets/work/video-editing-shyam-baba-company-animated-happy-ganesh-chaturthi-mobil-24eb86.mp4",
+      "thumb": "assets/work/video-editing-shyam-baba-company-animated-happy-ganesh-chaturthi-mobil-24eb86-t.webp",
+      "w": 540,
+      "h": 960,
+      "dur": 18,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "video-editing-shyam-baba-company-yellow-colorful-animated-happy-new-ye-d0c62c",
+      "title": "Happy New Year 2025 animation",
+      "category": "Video & Reels",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "video",
+      "kind": "Reel",
+      "src": "assets/work/video-editing-shyam-baba-company-yellow-colorful-animated-happy-new-ye-d0c62c.mp4",
+      "thumb": "assets/work/video-editing-shyam-baba-company-yellow-colorful-animated-happy-new-ye-d0c62c-t.webp",
+      "w": 540,
+      "h": 960,
+      "dur": 11,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "video-editing-shyam-baba-company-brown-and-green-festive-janmashtami-i-ef1994",
+      "title": "Janmashtami greeting",
+      "category": "Video & Reels",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "video",
+      "kind": "Reel",
+      "src": "assets/work/video-editing-shyam-baba-company-brown-and-green-festive-janmashtami-i-ef1994.mp4",
+      "thumb": "assets/work/video-editing-shyam-baba-company-brown-and-green-festive-janmashtami-i-ef1994-t.webp",
+      "w": 540,
+      "h": 960,
+      "dur": 11.5,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "video-editing-shyam-baba-company-green-and-orange-playful-merry-christ-eb1f6d",
+      "title": "Merry Christmas animation",
+      "category": "Video & Reels",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "video",
+      "kind": "Reel",
+      "src": "assets/work/video-editing-shyam-baba-company-green-and-orange-playful-merry-christ-eb1f6d.mp4",
+      "thumb": "assets/work/video-editing-shyam-baba-company-green-and-orange-playful-merry-christ-eb1f6d-t.webp",
+      "w": 540,
+      "h": 960,
+      "dur": 10,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "video-editing-shyam-baba-company-orange-and-yellow-festive-style-india-e9ca13",
+      "title": "Raksha Bandhan reel",
+      "category": "Video & Reels",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "video",
+      "kind": "Reel",
+      "src": "assets/work/video-editing-shyam-baba-company-orange-and-yellow-festive-style-india-e9ca13.mp4",
+      "thumb": "assets/work/video-editing-shyam-baba-company-orange-and-yellow-festive-style-india-e9ca13-t.webp",
+      "w": 540,
+      "h": 960,
+      "dur": 10.5,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
     },
     {
       "id": "graphic-desinging-suvidha-suvidha-digital-marketing-ppt-video-f7e0ed",
@@ -23040,7 +23602,9 @@
       "thumb": "assets/work/graphic-desinging-suvidha-suvidha-digital-marketing-ppt-video-f7e0ed-t.webp",
       "w": 960,
       "h": 540,
-      "dur": 45.5
+      "dur": 45.5,
+      "industry": "tech",
+      "clientId": "suvidha-soft"
     },
     {
       "id": "video-editing-school-and-college-reels-lv-0-20260702163138-102e66",
@@ -23053,7 +23617,9 @@
       "thumb": "assets/work/video-editing-school-and-college-reels-lv-0-20260702163138-102e66-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 22.5
+      "dur": 22.5,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "video-editing-school-and-college-reels-lv-0-20260617205428-2dba6f",
@@ -23066,7 +23632,9 @@
       "thumb": "assets/work/video-editing-school-and-college-reels-lv-0-20260617205428-2dba6f-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 50.6
+      "dur": 50.6,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "video-editing-international-work-sample-conroy-school-google-search-in-afc35d",
@@ -23079,7 +23647,9 @@
       "thumb": "assets/work/video-editing-international-work-sample-conroy-school-google-search-in-afc35d-t.webp",
       "w": 958,
       "h": 540,
-      "dur": 11.7
+      "dur": 11.7,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "video-editing-school-and-college-reels-lv-0-20260709095322-9b56ac",
@@ -23092,7 +23662,9 @@
       "thumb": "assets/work/video-editing-school-and-college-reels-lv-0-20260709095322-9b56ac-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 25.7
+      "dur": 25.7,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "video-editing-school-and-college-reels-lv-0-20260708162926-361b88",
@@ -23105,7 +23677,9 @@
       "thumb": "assets/work/video-editing-school-and-college-reels-lv-0-20260708162926-361b88-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 41.3
+      "dur": 41.3,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "video-editing-wedding-invitaions-anwar-khan-engagement-invitation-vide-c9b837",
@@ -23118,7 +23692,9 @@
       "thumb": "assets/work/video-editing-wedding-invitaions-anwar-khan-engagement-invitation-vide-c9b837-t.webp",
       "w": 960,
       "h": 540,
-      "dur": 30
+      "dur": 30,
+      "industry": "community",
+      "clientId": "wedding-invitations"
     },
     {
       "id": "video-editing-wedding-invitaions-pink-floral-illustration-wedding-rece-6a4a02",
@@ -23131,7 +23707,9 @@
       "thumb": "assets/work/video-editing-wedding-invitaions-pink-floral-illustration-wedding-rece-6a4a02-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 20.4
+      "dur": 20.4,
+      "industry": "community",
+      "clientId": "wedding-invitations"
     },
     {
       "id": "video-editing-wedding-invitaions-muslim-wedding-invitation-07fb97",
@@ -23144,7 +23722,9 @@
       "thumb": "assets/work/video-editing-wedding-invitaions-muslim-wedding-invitation-07fb97-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 19.3
+      "dur": 19.3,
+      "industry": "community",
+      "clientId": "wedding-invitations"
     },
     {
       "id": "video-editing-xfc-khamma-reels-lv-0-20261019003458-f37d72",
@@ -23157,7 +23737,9 @@
       "thumb": "assets/work/video-editing-xfc-khamma-reels-lv-0-20261019003458-f37d72-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 16
+      "dur": 16,
+      "industry": "community",
+      "clientId": "xfc-khammam"
     },
     {
       "id": "video-editing-xfc-khamma-reels-jump-cut-edit-dbf76f",
@@ -23170,7 +23752,9 @@
       "thumb": "assets/work/video-editing-xfc-khamma-reels-jump-cut-edit-dbf76f-t.webp",
       "w": 540,
       "h": 960,
-      "dur": 19.8
+      "dur": 19.8,
+      "industry": "community",
+      "clientId": "xfc-khammam"
     },
     {
       "id": "video-editing-hospital-edited-videos-yalamaddi-hospitals-presentation-f4ff64",
@@ -23183,7 +23767,9 @@
       "thumb": "assets/work/video-editing-hospital-edited-videos-yalamaddi-hospitals-presentation-f4ff64-t.webp",
       "w": 960,
       "h": 540,
-      "dur": 34.5
+      "dur": 34.5,
+      "industry": "healthcare",
+      "clientId": "yalamaddi-hospitals"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-agrani-college-admission-instag-e82aec",
@@ -23195,7 +23781,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-agrani-college-admission-instag-e82aec.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-agrani-college-admission-instag-e82aec-t.webp",
       "w": 2160,
-      "h": 3840
+      "h": 3840,
+      "industry": "education",
+      "clientId": "agrani-college"
     },
     {
       "id": "graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-2-4ec000",
@@ -23207,7 +23795,9 @@
       "src": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-2-4ec000.webp",
       "thumb": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-2-4ec000-t.webp",
       "w": 2560,
-      "h": 1440
+      "h": 1440,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-3-54ff30",
@@ -23219,7 +23809,9 @@
       "src": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-3-54ff30.webp",
       "thumb": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-3-54ff30-t.webp",
       "w": 2560,
-      "h": 1440
+      "h": 1440,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-4-ffe5bd",
@@ -23231,7 +23823,9 @@
       "src": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-4-ffe5bd.webp",
       "thumb": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-4-ffe5bd-t.webp",
       "w": 2560,
-      "h": 1440
+      "h": 1440,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-5-7a431e",
@@ -23243,7 +23837,9 @@
       "src": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-5-7a431e.webp",
       "thumb": "assets/work/graphic-desinging-international-work-best-ai-tools-youtube-thumbnail-5-7a431e-t.webp",
       "w": 2560,
-      "h": 1440
+      "h": 1440,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-international-work-book-front-cover-1-80c773",
@@ -23255,7 +23851,9 @@
       "src": "assets/work/graphic-desinging-international-work-book-front-cover-1-80c773.webp",
       "thumb": "assets/work/graphic-desinging-international-work-book-front-cover-1-80c773-t.webp",
       "w": 4406,
-      "h": 7031
+      "h": 7031,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-international-work-ai-brief-business-card-3-5fcd96",
@@ -23267,7 +23865,9 @@
       "src": "assets/work/graphic-desinging-international-work-ai-brief-business-card-3-5fcd96.webp",
       "thumb": "assets/work/graphic-desinging-international-work-ai-brief-business-card-3-5fcd96-t.webp",
       "w": 3281,
-      "h": 1875
+      "h": 1875,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-international-work-ai-brief-business-card-1-da626d",
@@ -23279,7 +23879,9 @@
       "src": "assets/work/graphic-desinging-international-work-ai-brief-business-card-1-da626d.webp",
       "thumb": "assets/work/graphic-desinging-international-work-ai-brief-business-card-1-da626d-t.webp",
       "w": 3281,
-      "h": 1875
+      "h": 1875,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-hospital-desings-arogya-footer-header-03d3e1",
@@ -23291,7 +23893,9 @@
       "src": "assets/work/graphic-desinging-hospital-desings-arogya-footer-header-03d3e1.webp",
       "thumb": "assets/work/graphic-desinging-hospital-desings-arogya-footer-header-03d3e1-t.webp",
       "w": 3375,
-      "h": 6e3
+      "h": 6e3,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "graphic-desinging-hospital-desings-arogya-nabh-e90063",
@@ -23303,7 +23907,9 @@
       "src": "assets/work/graphic-desinging-hospital-desings-arogya-nabh-e90063.webp",
       "thumb": "assets/work/graphic-desinging-hospital-desings-arogya-nabh-e90063-t.webp",
       "w": 2160,
-      "h": 3840
+      "h": 3840,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "graphic-desinging-hospital-desings-arogya-hospitals-ugadi-greeting-ins-238980",
@@ -23315,7 +23921,9 @@
       "src": "assets/work/graphic-desinging-hospital-desings-arogya-hospitals-ugadi-greeting-ins-238980.webp",
       "thumb": "assets/work/graphic-desinging-hospital-desings-arogya-hospitals-ugadi-greeting-ins-238980-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-excellent-tuition-point-summer--05cfea",
@@ -23327,7 +23935,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-excellent-tuition-point-summer--05cfea.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-excellent-tuition-point-summer--05cfea-t.webp",
       "w": 2700,
-      "h": 4800
+      "h": 4800,
+      "industry": "education",
+      "clientId": "excellent-tuition-point"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-inter-fail-exams-tuition-poster-6f678d",
@@ -23339,7 +23949,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-inter-fail-exams-tuition-poster-6f678d.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-inter-fail-exams-tuition-poster-6f678d-t.webp",
       "w": 2700,
-      "h": 4623
+      "h": 4623,
+      "industry": "education",
+      "clientId": "excellent-tuition-point"
     },
     {
       "id": "graphic-desinging-gamlawala-pot-maker-gamlawala-br-ambedkar-s-jayanti--b541da",
@@ -23351,7 +23963,9 @@
       "src": "assets/work/graphic-desinging-gamlawala-pot-maker-gamlawala-br-ambedkar-s-jayanti--b541da.webp",
       "thumb": "assets/work/graphic-desinging-gamlawala-pot-maker-gamlawala-br-ambedkar-s-jayanti--b541da-t.webp",
       "w": 2700,
-      "h": 3375
+      "h": 3375,
+      "industry": "retail",
+      "clientId": "gamlawala"
     },
     {
       "id": "graphic-desinging-gamlawala-pot-maker-gamlawala-happy-labor-day-instag-547aba",
@@ -23363,7 +23977,9 @@
       "src": "assets/work/graphic-desinging-gamlawala-pot-maker-gamlawala-happy-labor-day-instag-547aba.webp",
       "thumb": "assets/work/graphic-desinging-gamlawala-pot-maker-gamlawala-happy-labor-day-instag-547aba-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "retail",
+      "clientId": "gamlawala"
     },
     {
       "id": "graphic-desinging-gamlawala-pot-maker-green-and-beige-modern-minimalis-8b657b",
@@ -23375,7 +23991,9 @@
       "src": "assets/work/graphic-desinging-gamlawala-pot-maker-green-and-beige-modern-minimalis-8b657b.webp",
       "thumb": "assets/work/graphic-desinging-gamlawala-pot-maker-green-and-beige-modern-minimalis-8b657b-t.webp",
       "w": 2700,
-      "h": 3375
+      "h": 3375,
+      "industry": "retail",
+      "clientId": "gamlawala"
     },
     {
       "id": "graphic-desinging-gamlawala-pot-maker-green-and-beige-modern-minimalis-7f1e0a",
@@ -23387,7 +24005,9 @@
       "src": "assets/work/graphic-desinging-gamlawala-pot-maker-green-and-beige-modern-minimalis-7f1e0a.webp",
       "thumb": "assets/work/graphic-desinging-gamlawala-pot-maker-green-and-beige-modern-minimalis-7f1e0a-t.webp",
       "w": 2700,
-      "h": 1803
+      "h": 1803,
+      "industry": "retail",
+      "clientId": "gamlawala"
     },
     {
       "id": "graphic-desinging-international-work-gully-guide-services-banner-e99e5e",
@@ -23399,7 +24019,9 @@
       "src": "assets/work/graphic-desinging-international-work-gully-guide-services-banner-e99e5e.webp",
       "thumb": "assets/work/graphic-desinging-international-work-gully-guide-services-banner-e99e5e-t.webp",
       "w": 17280,
-      "h": 5184
+      "h": 5184,
+      "industry": "tech",
+      "clientId": "gully-guide"
     },
     {
       "id": "graphic-desinging-international-work-gully-guide-strategy-services-ban-a6a711",
@@ -23411,7 +24033,9 @@
       "src": "assets/work/graphic-desinging-international-work-gully-guide-strategy-services-ban-a6a711.webp",
       "thumb": "assets/work/graphic-desinging-international-work-gully-guide-strategy-services-ban-a6a711-t.webp",
       "w": 17280,
-      "h": 5184
+      "h": 5184,
+      "industry": "tech",
+      "clientId": "gully-guide"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-harvest-results-celebration-pos-da4006",
@@ -23423,7 +24047,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-harvest-results-celebration-pos-da4006.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-harvest-results-celebration-pos-da4006-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "harvest-public-school"
     },
     {
       "id": "graphic-desinging-suvidha-madanvasu-property-listing-services-facebook-89fd38",
@@ -23435,7 +24061,9 @@
       "src": "assets/work/graphic-desinging-suvidha-madanvasu-property-listing-services-facebook-89fd38.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-madanvasu-property-listing-services-facebook-89fd38-t.webp",
       "w": 4800,
-      "h": 1500
+      "h": 1500,
+      "industry": "services",
+      "clientId": "madanvasu-real-estate"
     },
     {
       "id": "graphic-desinging-suvidha-madanvasu-real-estate-yellow-web-slider-1920-ad9aac",
@@ -23447,7 +24075,9 @@
       "src": "assets/work/graphic-desinging-suvidha-madanvasu-real-estate-yellow-web-slider-1920-ad9aac.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-madanvasu-real-estate-yellow-web-slider-1920-ad9aac-t.webp",
       "w": 3840,
-      "h": 1200
+      "h": 1200,
+      "industry": "services",
+      "clientId": "madanvasu-real-estate"
     },
     {
       "id": "graphic-desinging-international-work-mahesh-devalla-youtube-banner-6-a27077",
@@ -23459,7 +24089,9 @@
       "src": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-6-a27077.webp",
       "thumb": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-6-a27077-t.webp",
       "w": 3840,
-      "h": 2160
+      "h": 2160,
+      "industry": "tech",
+      "clientId": "mahesh-devalla"
     },
     {
       "id": "graphic-desinging-international-work-mahesh-devalla-youtube-banner-4-718a83",
@@ -23471,7 +24103,9 @@
       "src": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-4-718a83.webp",
       "thumb": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-4-718a83-t.webp",
       "w": 3840,
-      "h": 2160
+      "h": 2160,
+      "industry": "tech",
+      "clientId": "mahesh-devalla"
     },
     {
       "id": "graphic-desinging-international-work-mahesh-devalla-youtube-banner-5-6da60b",
@@ -23483,7 +24117,9 @@
       "src": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-5-6da60b.webp",
       "thumb": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-5-6da60b-t.webp",
       "w": 3840,
-      "h": 2160
+      "h": 2160,
+      "industry": "tech",
+      "clientId": "mahesh-devalla"
     },
     {
       "id": "graphic-desinging-international-work-mahesh-devalla-youtube-banner-1-0be369",
@@ -23495,7 +24131,9 @@
       "src": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-1-0be369.webp",
       "thumb": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-1-0be369-t.webp",
       "w": 5120,
-      "h": 2880
+      "h": 2880,
+      "industry": "tech",
+      "clientId": "mahesh-devalla"
     },
     {
       "id": "graphic-desinging-international-work-mahesh-devalla-youtube-banner-2-325530",
@@ -23507,7 +24145,9 @@
       "src": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-2-325530.webp",
       "thumb": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-2-325530-t.webp",
       "w": 5120,
-      "h": 2880
+      "h": 2880,
+      "industry": "tech",
+      "clientId": "mahesh-devalla"
     },
     {
       "id": "graphic-desinging-international-work-mahesh-devalla-youtube-banner-3-0238ac",
@@ -23519,7 +24159,51 @@
       "src": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-3-0238ac.webp",
       "thumb": "assets/work/graphic-desinging-international-work-mahesh-devalla-youtube-banner-3-0238ac-t.webp",
       "w": 5120,
-      "h": 2880
+      "h": 2880,
+      "industry": "tech",
+      "clientId": "mahesh-devalla"
+    },
+    {
+      "id": "graphic-desinging-schools-and-colleges-2-656504",
+      "title": '"Your global education journey" poster',
+      "category": "Graphic Design",
+      "client": "Other schools",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-schools-and-colleges-2-656504.webp",
+      "thumb": "assets/work/graphic-desinging-schools-and-colleges-2-656504-t.webp",
+      "w": 2160,
+      "h": 3840,
+      "industry": "education",
+      "clientId": "other-schools"
+    },
+    {
+      "id": "graphic-desinging-schools-and-colleges-2-1-62d0f9",
+      "title": "School admissions open (green)",
+      "category": "Graphic Design",
+      "client": "Other schools",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-schools-and-colleges-2-1-62d0f9.webp",
+      "thumb": "assets/work/graphic-desinging-schools-and-colleges-2-1-62d0f9-t.webp",
+      "w": 2160,
+      "h": 3840,
+      "industry": "education",
+      "clientId": "other-schools"
+    },
+    {
+      "id": "graphic-desinging-schools-and-colleges-1-1-644d02",
+      "title": "School admissions open poster",
+      "category": "Graphic Design",
+      "client": "Other schools",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-schools-and-colleges-1-1-644d02.webp",
+      "thumb": "assets/work/graphic-desinging-schools-and-colleges-1-1-644d02-t.webp",
+      "w": 2160,
+      "h": 3840,
+      "industry": "education",
+      "clientId": "other-schools"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-enrollment-post-1-f2120d",
@@ -23531,7 +24215,23 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-enrollment-post-1-f2120d.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-enrollment-post-1-f2120d-t.webp",
       "w": 3240,
-      "h": 4050
+      "h": 4050,
+      "industry": "education",
+      "clientId": "oxford-high-school"
+    },
+    {
+      "id": "graphic-desinging-schools-and-colleges-oxford-small-logo-9814a5",
+      "title": "Oxford High School crest (small)",
+      "category": "Graphic Design",
+      "client": "Oxford High School",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-schools-and-colleges-oxford-small-logo-9814a5.webp",
+      "thumb": "assets/work/graphic-desinging-schools-and-colleges-oxford-small-logo-9814a5-t.webp",
+      "w": 2e3,
+      "h": 2e3,
+      "industry": "education",
+      "clientId": "oxford-high-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-enrollment-post-2-d62b69",
@@ -23543,7 +24243,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-enrollment-post-2-d62b69.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-enrollment-post-2-d62b69-t.webp",
       "w": 3240,
-      "h": 4050
+      "h": 4050,
+      "industry": "education",
+      "clientId": "oxford-high-school"
     },
     {
       "id": "graphic-desinging-suvidha-pellillaperayya-matrimony-app-cd4ad1",
@@ -23555,7 +24257,9 @@
       "src": "assets/work/graphic-desinging-suvidha-pellillaperayya-matrimony-app-cd4ad1.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-pellillaperayya-matrimony-app-cd4ad1-t.webp",
       "w": 2700,
-      "h": 2700
+      "h": 2700,
+      "industry": "services",
+      "clientId": "pellillaperayya"
     },
     {
       "id": "graphic-desinging-international-work-black-simple-elegant-personal-lin-425a22",
@@ -23567,7 +24271,9 @@
       "src": "assets/work/graphic-desinging-international-work-black-simple-elegant-personal-lin-425a22.webp",
       "thumb": "assets/work/graphic-desinging-international-work-black-simple-elegant-personal-lin-425a22-t.webp",
       "w": 1584,
-      "h": 396
+      "h": 396,
+      "industry": "tech",
+      "clientId": "personal-brand"
     },
     {
       "id": "graphic-desinging-suvidha-rainbow-world-electric-home-appliances-meta--70cbf9",
@@ -23579,247 +24285,9 @@
       "src": "assets/work/graphic-desinging-suvidha-rainbow-world-electric-home-appliances-meta--70cbf9.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-rainbow-world-electric-home-appliances-meta--70cbf9-t.webp",
       "w": 3600,
-      "h": 1884
-    },
-    {
-      "id": "graphic-desinging-schools-and-colleges-2-656504",
-      "title": '"Your global education journey" poster',
-      "category": "Graphic Design",
-      "client": "Schools & Colleges",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-schools-and-colleges-2-656504.webp",
-      "thumb": "assets/work/graphic-desinging-schools-and-colleges-2-656504-t.webp",
-      "w": 2160,
-      "h": 3840
-    },
-    {
-      "id": "graphic-desinging-schools-and-colleges-oxford-small-logo-9814a5",
-      "title": "Oxford High School crest (small)",
-      "category": "Graphic Design",
-      "client": "Schools & Colleges",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-schools-and-colleges-oxford-small-logo-9814a5.webp",
-      "thumb": "assets/work/graphic-desinging-schools-and-colleges-oxford-small-logo-9814a5-t.webp",
-      "w": 2e3,
-      "h": 2e3
-    },
-    {
-      "id": "graphic-desinging-schools-and-colleges-2-1-62d0f9",
-      "title": "School admissions open (green)",
-      "category": "Graphic Design",
-      "client": "Schools & Colleges",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-schools-and-colleges-2-1-62d0f9.webp",
-      "thumb": "assets/work/graphic-desinging-schools-and-colleges-2-1-62d0f9-t.webp",
-      "w": 2160,
-      "h": 3840
-    },
-    {
-      "id": "graphic-desinging-schools-and-colleges-1-1-644d02",
-      "title": "School admissions open poster",
-      "category": "Graphic Design",
-      "client": "Schools & Colleges",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-schools-and-colleges-1-1-644d02.webp",
-      "thumb": "assets/work/graphic-desinging-schools-and-colleges-1-1-644d02-t.webp",
-      "w": 2160,
-      "h": 3840
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-black-yellow-simple-modern-earbud-6c15cd",
-      "title": "AirPods Pro & earbuds offer flyer",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-black-yellow-simple-modern-earbud-6c15cd.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-black-yellow-simple-modern-earbud-6c15cd-t.webp",
-      "w": 2475,
-      "h": 3500
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-scheme-diwali-festival-a4-5ee4ff",
-      "title": "Apple Wali Diwali dealer scheme",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-scheme-diwali-festival-a4-5ee4ff.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-scheme-diwali-festival-a4-5ee4ff-t.webp",
-      "w": 2828,
-      "h": 4e3
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-choti-happy-diwali-instagram-post-d9d3b5",
-      "title": "Choti Diwali post",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-choti-happy-diwali-instagram-post-d9d3b5.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-choti-happy-diwali-instagram-post-d9d3b5-t.webp",
-      "w": 2160,
-      "h": 2700
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-dussehra-greeting-instagram-post-ca040c",
-      "title": "Dussehra greeting",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-dussehra-greeting-instagram-post-ca040c.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-dussehra-greeting-instagram-post-ca040c-t.webp",
-      "w": 2160,
-      "h": 2700
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-illustrative-dussehra-greeting-in-7a094e",
-      "title": "Dussehra illustrated greeting",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-illustrative-dussehra-greeting-in-7a094e.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-illustrative-dussehra-greeting-in-7a094e-t.webp",
-      "w": 2160,
-      "h": 2700
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-illustrated-gandhi-jayanti-instag-74b95e",
-      "title": "Gandhi Jayanti post",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-illustrated-gandhi-jayanti-instag-74b95e.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-illustrated-gandhi-jayanti-instag-74b95e-t.webp",
-      "w": 2160,
-      "h": 2700
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-beige-and-black-illustrative-guru-efd603",
-      "title": "Guru Nanak Jayanti post",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-beige-and-black-illustrative-guru-efd603.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-beige-and-black-illustrative-guru-efd603-t.webp",
-      "w": 2160,
-      "h": 2700
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-international-e-waste-083483",
-      "title": "International E-Waste Day post",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-international-e-waste-083483.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-international-e-waste-083483-t.webp",
-      "w": 2160,
-      "h": 2160
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-iphone-16-117c40",
-      "title": "iPhone 16 series one-pager",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-iphone-16-117c40.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-iphone-16-117c40-t.webp",
-      "w": 2160,
-      "h": 3840
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-traditional-navratri-festival-gre-035fbc",
-      "title": "Navratri greeting",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-traditional-navratri-festival-gre-035fbc.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-traditional-navratri-festival-gre-035fbc-t.webp",
-      "w": 2700,
-      "h": 3375
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-red-happy-raksha-bandhan-mobile-v-08cf89",
-      "title": "Raksha Bandhan greeting",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-red-happy-raksha-bandhan-mobile-v-08cf89.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-red-happy-raksha-bandhan-mobile-v-08cf89-t.webp",
-      "w": 1620,
-      "h": 2880
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-red-orange-playful-illustrative-r-8fa94d",
-      "title": "Raksha Bandhan illustrated post",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-red-orange-playful-illustrative-r-8fa94d.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-red-orange-playful-illustrative-r-8fa94d-t.webp",
-      "w": 2160,
-      "h": 2160
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-ratan-tata-rip-om-shanti-d940f2",
-      "title": "Ratan Tata tribute",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-ratan-tata-rip-om-shanti-d940f2.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-ratan-tata-rip-om-shanti-d940f2-t.webp",
-      "w": 2160,
-      "h": 2700
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-servify-minimal-blue-white-creati-2bf8cc",
-      "title": "Servify device exchange poster",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-servify-minimal-blue-white-creati-2bf8cc.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-servify-minimal-blue-white-creati-2bf8cc-t.webp",
-      "w": 2381,
-      "h": 3368
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-ipad-and-pen-instagram-post-76eda4",
-      "title": "Teacher's Day iPad post",
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-ipad-and-pen-instagram-post-76eda4.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-ipad-and-pen-instagram-post-76eda4-t.webp",
-      "w": 2160,
-      "h": 2700
-    },
-    {
-      "id": "graphic-desinging-shaym-baba-company-zopper-apple-watch-a3-ea5e9c",
-      "title": 'Zopper "India on the move" Apple Watch poster',
-      "category": "Graphic Design",
-      "client": "Shyam Baba Company",
-      "type": "image",
-      "kind": "Design",
-      "src": "assets/work/graphic-desinging-shaym-baba-company-zopper-apple-watch-a3-ea5e9c.webp",
-      "thumb": "assets/work/graphic-desinging-shaym-baba-company-zopper-apple-watch-a3-ea5e9c-t.webp",
-      "w": 2829,
-      "h": 4e3
+      "h": 1884,
+      "industry": "retail",
+      "clientId": "rainbow-world"
     },
     {
       "id": "graphic-desinging-suvidha-cv-raman-school-college-program-facebook-ad--4915de",
@@ -23831,7 +24299,9 @@
       "src": "assets/work/graphic-desinging-suvidha-cv-raman-school-college-program-facebook-ad--4915de.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-cv-raman-school-college-program-facebook-ad--4915de-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "sri-cv-raman-junior-college"
     },
     {
       "id": "graphic-desinging-suvidha-img-20250521-wa0057-c8a624",
@@ -23843,7 +24313,9 @@
       "src": "assets/work/graphic-desinging-suvidha-img-20250521-wa0057-c8a624.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-img-20250521-wa0057-c8a624-t.webp",
       "w": 2048,
-      "h": 2560
+      "h": 2560,
+      "industry": "education",
+      "clientId": "sri-cv-raman-junior-college"
     },
     {
       "id": "graphic-desinging-suvidha-cv-raman-college-admission-instagram-post-549c1b",
@@ -23855,7 +24327,9 @@
       "src": "assets/work/graphic-desinging-suvidha-cv-raman-college-admission-instagram-post-549c1b.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-cv-raman-college-admission-instagram-post-549c1b-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "sri-cv-raman-junior-college"
     },
     {
       "id": "graphic-desinging-suvidha-sri-cv-raman-admission-instagram-post-5ce347",
@@ -23867,7 +24341,9 @@
       "src": "assets/work/graphic-desinging-suvidha-sri-cv-raman-admission-instagram-post-5ce347.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-sri-cv-raman-admission-instagram-post-5ce347-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "sri-cv-raman-junior-college"
     },
     {
       "id": "graphic-desinging-suvidha-cv-raman-college-admission-facebook-ad-d72438",
@@ -23879,7 +24355,9 @@
       "src": "assets/work/graphic-desinging-suvidha-cv-raman-college-admission-facebook-ad-d72438.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-cv-raman-college-admission-facebook-ad-d72438-t.webp",
       "w": 3e3,
-      "h": 1570
+      "h": 1570,
+      "industry": "education",
+      "clientId": "sri-cv-raman-junior-college"
     },
     {
       "id": "graphic-desinging-suvidha-cv-raman-college-admission-instagram-post-4-0e38cf",
@@ -23891,7 +24369,9 @@
       "src": "assets/work/graphic-desinging-suvidha-cv-raman-college-admission-instagram-post-4-0e38cf.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-cv-raman-college-admission-instagram-post-4-0e38cf-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "sri-cv-raman-junior-college"
     },
     {
       "id": "graphic-desinging-suvidha-1-491b51",
@@ -23903,7 +24383,9 @@
       "src": "assets/work/graphic-desinging-suvidha-1-491b51.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-1-491b51-t.webp",
       "w": 2828,
-      "h": 4e3
+      "h": 4e3,
+      "industry": "education",
+      "clientId": "sri-cv-raman-junior-college"
     },
     {
       "id": "graphic-desinging-suvidha-2-1f53ea",
@@ -23915,7 +24397,233 @@
       "src": "assets/work/graphic-desinging-suvidha-2-1f53ea.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-2-1f53ea-t.webp",
       "w": 2828,
-      "h": 4e3
+      "h": 4e3,
+      "industry": "education",
+      "clientId": "sri-cv-raman-junior-college"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-black-yellow-simple-modern-earbud-6c15cd",
+      "title": "AirPods Pro & earbuds offer flyer",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-black-yellow-simple-modern-earbud-6c15cd.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-black-yellow-simple-modern-earbud-6c15cd-t.webp",
+      "w": 2475,
+      "h": 3500,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-scheme-diwali-festival-a4-5ee4ff",
+      "title": "Apple Wali Diwali dealer scheme",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-scheme-diwali-festival-a4-5ee4ff.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-scheme-diwali-festival-a4-5ee4ff-t.webp",
+      "w": 2828,
+      "h": 4e3,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-choti-happy-diwali-instagram-post-d9d3b5",
+      "title": "Choti Diwali post",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-choti-happy-diwali-instagram-post-d9d3b5.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-choti-happy-diwali-instagram-post-d9d3b5-t.webp",
+      "w": 2160,
+      "h": 2700,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-dussehra-greeting-instagram-post-ca040c",
+      "title": "Dussehra greeting",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-dussehra-greeting-instagram-post-ca040c.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-dussehra-greeting-instagram-post-ca040c-t.webp",
+      "w": 2160,
+      "h": 2700,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-illustrative-dussehra-greeting-in-7a094e",
+      "title": "Dussehra illustrated greeting",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-illustrative-dussehra-greeting-in-7a094e.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-illustrative-dussehra-greeting-in-7a094e-t.webp",
+      "w": 2160,
+      "h": 2700,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-illustrated-gandhi-jayanti-instag-74b95e",
+      "title": "Gandhi Jayanti post",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-illustrated-gandhi-jayanti-instag-74b95e.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-illustrated-gandhi-jayanti-instag-74b95e-t.webp",
+      "w": 2160,
+      "h": 2700,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-beige-and-black-illustrative-guru-efd603",
+      "title": "Guru Nanak Jayanti post",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-beige-and-black-illustrative-guru-efd603.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-beige-and-black-illustrative-guru-efd603-t.webp",
+      "w": 2160,
+      "h": 2700,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-international-e-waste-083483",
+      "title": "International E-Waste Day post",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-international-e-waste-083483.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-international-e-waste-083483-t.webp",
+      "w": 2160,
+      "h": 2160,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-iphone-16-117c40",
+      "title": "iPhone 16 series one-pager",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-iphone-16-117c40.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-iphone-16-117c40-t.webp",
+      "w": 2160,
+      "h": 3840,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-traditional-navratri-festival-gre-035fbc",
+      "title": "Navratri greeting",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-traditional-navratri-festival-gre-035fbc.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-traditional-navratri-festival-gre-035fbc-t.webp",
+      "w": 2700,
+      "h": 3375,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-red-happy-raksha-bandhan-mobile-v-08cf89",
+      "title": "Raksha Bandhan greeting",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-red-happy-raksha-bandhan-mobile-v-08cf89.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-red-happy-raksha-bandhan-mobile-v-08cf89-t.webp",
+      "w": 1620,
+      "h": 2880,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-red-orange-playful-illustrative-r-8fa94d",
+      "title": "Raksha Bandhan illustrated post",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-red-orange-playful-illustrative-r-8fa94d.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-red-orange-playful-illustrative-r-8fa94d-t.webp",
+      "w": 2160,
+      "h": 2160,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-ratan-tata-rip-om-shanti-d940f2",
+      "title": "Ratan Tata tribute",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-ratan-tata-rip-om-shanti-d940f2.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-ratan-tata-rip-om-shanti-d940f2-t.webp",
+      "w": 2160,
+      "h": 2700,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-servify-minimal-blue-white-creati-2bf8cc",
+      "title": "Servify device exchange poster",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-servify-minimal-blue-white-creati-2bf8cc.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-servify-minimal-blue-white-creati-2bf8cc-t.webp",
+      "w": 2381,
+      "h": 3368,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-ipad-and-pen-instagram-post-76eda4",
+      "title": "Teacher's Day iPad post",
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-ipad-and-pen-instagram-post-76eda4.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-ipad-and-pen-instagram-post-76eda4-t.webp",
+      "w": 2160,
+      "h": 2700,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-shaym-baba-company-zopper-apple-watch-a3-ea5e9c",
+      "title": 'Zopper "India on the move" Apple Watch poster',
+      "category": "Graphic Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Design",
+      "src": "assets/work/graphic-desinging-shaym-baba-company-zopper-apple-watch-a3-ea5e9c.webp",
+      "thumb": "assets/work/graphic-desinging-shaym-baba-company-zopper-apple-watch-a3-ea5e9c-t.webp",
+      "w": 2829,
+      "h": 4e3,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
     },
     {
       "id": "graphic-desinging-suvidha-suvidha-soft-hanuman-jayanti-instagram-post-8c03ed",
@@ -23927,7 +24635,9 @@
       "src": "assets/work/graphic-desinging-suvidha-suvidha-soft-hanuman-jayanti-instagram-post-8c03ed.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-suvidha-soft-hanuman-jayanti-instagram-post-8c03ed-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "tech",
+      "clientId": "suvidha-soft"
     },
     {
       "id": "graphic-desinging-suvidha-suvidha-back-9be183",
@@ -23939,7 +24649,9 @@
       "src": "assets/work/graphic-desinging-suvidha-suvidha-back-9be183.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-suvidha-back-9be183-t.webp",
       "w": 5e3,
-      "h": 3535
+      "h": 3535,
+      "industry": "tech",
+      "clientId": "suvidha-soft"
     },
     {
       "id": "graphic-desinging-suvidha-suvidha-front-eda4f7",
@@ -23951,7 +24663,9 @@
       "src": "assets/work/graphic-desinging-suvidha-suvidha-front-eda4f7.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-suvidha-front-eda4f7-t.webp",
       "w": 5e3,
-      "h": 3535
+      "h": 3535,
+      "industry": "tech",
+      "clientId": "suvidha-soft"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-standee-back-to-conroy-school-j-c088bc",
@@ -23963,7 +24677,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-standee-back-to-conroy-school-j-c088bc.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-standee-back-to-conroy-school-j-c088bc-t.webp",
       "w": 2160,
-      "h": 3840
+      "h": 3840,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-admissions-2026-3-09873b",
@@ -23975,7 +24691,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-admissions-2026-3-09873b.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-admissions-2026-3-09873b-t.webp",
       "w": 2700,
-      "h": 3375
+      "h": 3375,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-teacher-of-the-mo-7dfe40",
@@ -23987,7 +24705,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-teacher-of-the-mo-7dfe40.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-teacher-of-the-mo-7dfe40-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-1-675165",
@@ -23999,7 +24719,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-1-675165.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-1-675165-t.webp",
       "w": 2160,
-      "h": 3840
+      "h": 3840,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-international-yog-08d3fe",
@@ -24011,7 +24733,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-international-yog-08d3fe.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-international-yog-08d3fe-t.webp",
       "w": 3840,
-      "h": 2160
+      "h": 2160,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-investiture-cerem-8f3615",
@@ -24023,7 +24747,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-investiture-cerem-8f3615.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-investiture-cerem-8f3615-t.webp",
       "w": 2e3,
-      "h": 2e3
+      "h": 2e3,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-investiture-cerem-075345",
@@ -24035,7 +24761,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-investiture-cerem-075345.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-investiture-cerem-075345-t.webp",
       "w": 3456,
-      "h": 2880
+      "h": 2880,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-doctor-s-day-inst-c50eca",
@@ -24047,7 +24775,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-doctor-s-day-inst-c50eca.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-doctor-s-day-inst-c50eca-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-environmental-pla-9c0ef2",
@@ -24059,7 +24789,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-environmental-pla-9c0ef2.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-environmental-pla-9c0ef2-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-whatsapp-promotional-post-the-c-f0a4f5",
@@ -24071,7 +24803,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-whatsapp-promotional-post-the-c-f0a4f5.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-whatsapp-promotional-post-the-c-f0a4f5-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-teacher-of-the-mo-c0de6d",
@@ -24083,7 +24817,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-teacher-of-the-mo-c0de6d.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-teacher-of-the-mo-c0de6d-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-student-deepanshi-74bb7c",
@@ -24095,7 +24831,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-student-deepanshi-74bb7c.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-student-deepanshi-74bb7c-t.webp",
       "w": 3840,
-      "h": 2160
+      "h": 2160,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-student-eshwar-ha-35f8e3",
@@ -24107,7 +24845,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-student-eshwar-ha-35f8e3.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-student-eshwar-ha-35f8e3-t.webp",
       "w": 2880,
-      "h": 1620
+      "h": 1620,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-student-council-election-poster-ab16dd",
@@ -24119,7 +24859,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-student-council-election-poster-ab16dd.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-student-council-election-poster-ab16dd-t.webp",
       "w": 2560,
-      "h": 1440
+      "h": 1440,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-student-of-the-mo-e5e26b",
@@ -24131,7 +24873,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-student-of-the-mo-e5e26b.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-student-of-the-mo-e5e26b-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-tcs-vibes-newsletter-20260806-1-5218bf",
@@ -24143,7 +24887,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-tcs-vibes-newsletter-20260806-1-5218bf.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-tcs-vibes-newsletter-20260806-1-5218bf-t.webp",
       "w": 1414,
-      "h": 2e3
+      "h": 2e3,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-teacher-achieveme-d724d3",
@@ -24155,7 +24901,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-teacher-achieveme-d724d3.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-teacher-achieveme-d724d3-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-conroy-school-telangana-formati-c82bde",
@@ -24167,7 +24915,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-telangana-formati-c82bde.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-conroy-school-telangana-formati-c82bde-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "education",
+      "clientId": "the-conroy-school"
     },
     {
       "id": "graphic-desinging-suvidha-blue-and-yellow-modern-mobile-app-developmen-2fb8ba",
@@ -24179,7 +24929,9 @@
       "src": "assets/work/graphic-desinging-suvidha-blue-and-yellow-modern-mobile-app-developmen-2fb8ba.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-blue-and-yellow-modern-mobile-app-developmen-2fb8ba-t.webp",
       "w": 2160,
-      "h": 3840
+      "h": 3840,
+      "industry": "tech",
+      "clientId": "wotg"
     },
     {
       "id": "graphic-desinging-suvidha-wotg-mobile-app-instagram-post-1-1-ad-bd6b48",
@@ -24191,7 +24943,9 @@
       "src": "assets/work/graphic-desinging-suvidha-wotg-mobile-app-instagram-post-1-1-ad-bd6b48.webp",
       "thumb": "assets/work/graphic-desinging-suvidha-wotg-mobile-app-instagram-post-1-1-ad-bd6b48-t.webp",
       "w": 3240,
-      "h": 3240
+      "h": 3240,
+      "industry": "tech",
+      "clientId": "wotg"
     },
     {
       "id": "graphic-desinging-schools-and-colleges-xiaomi-xplorers-1-0e8f26",
@@ -24203,7 +24957,9 @@
       "src": "assets/work/graphic-desinging-schools-and-colleges-xiaomi-xplorers-1-0e8f26.webp",
       "thumb": "assets/work/graphic-desinging-schools-and-colleges-xiaomi-xplorers-1-0e8f26-t.webp",
       "w": 2700,
-      "h": 4800
+      "h": 4800,
+      "industry": "community",
+      "clientId": "xfc-khammam"
     },
     {
       "id": "graphic-desinging-hospital-desings-yalamaddi-hospitals-hanuman-jayanti-9699a1",
@@ -24215,7 +24971,9 @@
       "src": "assets/work/graphic-desinging-hospital-desings-yalamaddi-hospitals-hanuman-jayanti-9699a1.webp",
       "thumb": "assets/work/graphic-desinging-hospital-desings-yalamaddi-hospitals-hanuman-jayanti-9699a1-t.webp",
       "w": 2160,
-      "h": 2700
+      "h": 2700,
+      "industry": "healthcare",
+      "clientId": "yalamaddi-hospitals"
     },
     {
       "id": "graphic-desinging-hospital-desings-yalamaddi-1521-x-590-px-2d80d9",
@@ -24227,7 +24985,9 @@
       "src": "assets/work/graphic-desinging-hospital-desings-yalamaddi-1521-x-590-px-2d80d9.webp",
       "thumb": "assets/work/graphic-desinging-hospital-desings-yalamaddi-1521-x-590-px-2d80d9-t.webp",
       "w": 3042,
-      "h": 1180
+      "h": 1180,
+      "industry": "healthcare",
+      "clientId": "yalamaddi-hospitals"
     },
     {
       "id": "graphic-desinging-hospital-desings-yala-maddi-telugu-b8f9e1",
@@ -24239,7 +24999,9 @@
       "src": "assets/work/graphic-desinging-hospital-desings-yala-maddi-telugu-b8f9e1.webp",
       "thumb": "assets/work/graphic-desinging-hospital-desings-yala-maddi-telugu-b8f9e1-t.webp",
       "w": 3042,
-      "h": 1180
+      "h": 1180,
+      "industry": "healthcare",
+      "clientId": "yalamaddi-hospitals"
     },
     {
       "id": "graphic-desinging-hospital-desings-yalamaddi-hospitals-web-slider-telu-094cda",
@@ -24251,7 +25013,23 @@
       "src": "assets/work/graphic-desinging-hospital-desings-yalamaddi-hospitals-web-slider-telu-094cda.webp",
       "thumb": "assets/work/graphic-desinging-hospital-desings-yalamaddi-hospitals-web-slider-telu-094cda-t.webp",
       "w": 3042,
-      "h": 1180
+      "h": 1180,
+      "industry": "healthcare",
+      "clientId": "yalamaddi-hospitals"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-picsart-26-04-14-12-05-27-157-1e9567",
+      "title": 'Agrani "Spice up Career" logo',
+      "category": "Logo Design",
+      "client": "Agrani College",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-picsart-26-04-14-12-05-27-157-1e9567.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-picsart-26-04-14-12-05-27-157-1e9567-t.webp",
+      "w": 3464,
+      "h": 3464,
+      "industry": "education",
+      "clientId": "agrani-college"
     },
     {
       "id": "graphic-desinging-logo-designs-ai-brief-logo-3-df6892",
@@ -24263,7 +25041,9 @@
       "src": "assets/work/graphic-desinging-logo-designs-ai-brief-logo-3-df6892.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-ai-brief-logo-3-df6892-t.webp",
       "w": 1563,
-      "h": 1563
+      "h": 1563,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-logo-designs-png-ai-breif-416f61",
@@ -24275,247 +25055,65 @@
       "src": "assets/work/graphic-desinging-logo-designs-png-ai-breif-416f61.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-png-ai-breif-416f61-t.webp",
       "w": 1563,
-      "h": 1563
-    },
-    {
-      "id": "graphic-desinging-logo-designs-24-hour-emergency-service-label-9006215-a03085",
-      "title": "24/7 emergency services label",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-24-hour-emergency-service-label-9006215-a03085.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-24-hour-emergency-service-label-9006215-a03085-t.webp",
-      "w": 1200,
-      "h": 1200
-    },
-    {
-      "id": "graphic-desinging-logo-designs-picsart-26-04-14-12-05-27-157-1e9567",
-      "title": 'Agrani "Spice up Career" logo',
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-picsart-26-04-14-12-05-27-157-1e9567.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-picsart-26-04-14-12-05-27-157-1e9567-t.webp",
-      "w": 3464,
-      "h": 3464
+      "h": 1563,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "graphic-desinging-logo-designs-arogya-dp-logo-2-f3b415",
       "title": "Arogya Hospitals DP logo",
       "category": "Logo Design",
-      "client": "Brand identity",
+      "client": "Arogya Hospitals",
       "type": "image",
       "kind": "Logo",
       "src": "assets/work/graphic-desinging-logo-designs-arogya-dp-logo-2-f3b415.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-arogya-dp-logo-2-f3b415-t.webp",
       "w": 4e3,
-      "h": 4e3
+      "h": 4e3,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "graphic-desinging-logo-designs-arogya-dp-logo-circle-a9259c",
       "title": "Arogya Hospitals round DP logo",
       "category": "Logo Design",
-      "client": "Brand identity",
+      "client": "Arogya Hospitals",
       "type": "image",
       "kind": "Logo",
       "src": "assets/work/graphic-desinging-logo-designs-arogya-dp-logo-circle-a9259c.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-arogya-dp-logo-circle-a9259c-t.webp",
       "w": 4e3,
-      "h": 4e3
+      "h": 4e3,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "graphic-desinging-logo-designs-campus-app-b5cd5d",
       "title": "Campus App logo",
       "category": "Logo Design",
-      "client": "Brand identity",
+      "client": "Campus App",
       "type": "image",
       "kind": "Logo",
       "src": "assets/work/graphic-desinging-logo-designs-campus-app-b5cd5d.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-campus-app-b5cd5d-t.webp",
       "w": 2700,
-      "h": 2700
+      "h": 2700,
+      "industry": "tech",
+      "clientId": "campus-app"
     },
     {
       "id": "graphic-desinging-logo-designs-schools-logos-e82bb1",
       "title": "Cedar Valley School logo",
       "category": "Logo Design",
-      "client": "Brand identity",
+      "client": "Cedar Valley School",
       "type": "image",
       "kind": "Logo",
       "src": "assets/work/graphic-desinging-logo-designs-schools-logos-e82bb1.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-schools-logos-e82bb1-t.webp",
       "w": 4e3,
-      "h": 4e3
-    },
-    {
-      "id": "graphic-desinging-logo-designs-dp-logo-58733e",
-      "title": "Ignexa Solutions logo",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-dp-logo-58733e.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-dp-logo-58733e-t.webp",
-      "w": 1563,
-      "h": 1563
-    },
-    {
-      "id": "graphic-desinging-logo-designs-final-logo-3-png-c933c4",
-      "title": "Ignexa Solutions logo (dark)",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-final-logo-3-png-c933c4.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-final-logo-3-png-c933c4-t.webp",
-      "w": 1563,
-      "h": 1563
-    },
-    {
-      "id": "graphic-desinging-logo-designs-mathrushree-dp-logo-1-81ffc6",
-      "title": "Mathrushree Fertility Centre logo",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-mathrushree-dp-logo-1-81ffc6.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-mathrushree-dp-logo-1-81ffc6-t.webp",
-      "w": 4e3,
-      "h": 4e3
-    },
-    {
-      "id": "graphic-desinging-logo-designs-mathrushree-dp-logo-2-a30060",
-      "title": "Mathrushree Fertility Centre logo (wide)",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-mathrushree-dp-logo-2-a30060.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-mathrushree-dp-logo-2-a30060-t.webp",
-      "w": 4e3,
-      "h": 4e3
-    },
-    {
-      "id": "graphic-desinging-logo-designs-mindx-full-logo-with-bg-7e3109",
-      "title": "Mindx full logo",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-mindx-full-logo-with-bg-7e3109.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-mindx-full-logo-with-bg-7e3109-t.webp",
-      "w": 2553,
-      "h": 945
-    },
-    {
-      "id": "graphic-desinging-logo-designs-mindx-dp-logo-cfd5c2",
-      "title": "Mindx icon",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-mindx-dp-logo-cfd5c2.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-mindx-dp-logo-cfd5c2-t.webp",
-      "w": 2e3,
-      "h": 2e3
-    },
-    {
-      "id": "graphic-desinging-logo-designs-oxford-logo-animation-9ad21a",
-      "title": "Oxford High School crest",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-oxford-logo-animation-9ad21a.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-oxford-logo-animation-9ad21a-t.webp",
-      "w": 2e3,
-      "h": 2e3
-    },
-    {
-      "id": "graphic-desinging-logo-designs-5-253ddb",
-      "title": "RAJ logo",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-5-253ddb.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-5-253ddb-t.webp",
-      "w": 1563,
-      "h": 1563
-    },
-    {
-      "id": "graphic-desinging-logo-designs-rai-logo-8afea0",
-      "title": "RAJ logo (dark)",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-rai-logo-8afea0.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-rai-logo-8afea0-t.webp",
-      "w": 1563,
-      "h": 1563
-    },
-    {
-      "id": "graphic-desinging-logo-designs-sri-shyam-baba-logo-og-9cafe7",
-      "title": "Sri Shyam Baba Electronics logo",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-sri-shyam-baba-logo-og-9cafe7.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-sri-shyam-baba-logo-og-9cafe7-t.webp",
-      "w": 1236,
-      "h": 1236
-    },
-    {
-      "id": "graphic-desinging-logo-designs-srs-sliver-logo-3eaafa",
-      "title": "SRS Silvers logo",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-srs-sliver-logo-3eaafa.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-srs-sliver-logo-3eaafa-t.webp",
-      "w": 4e3,
-      "h": 4e3
-    },
-    {
-      "id": "graphic-desinging-logo-designs-the-conroy-school-logo-1-eba287",
-      "title": "The Conroy School crest",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-the-conroy-school-logo-1-eba287.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-the-conroy-school-logo-1-eba287-t.webp",
-      "w": 4e3,
-      "h": 4e3
-    },
-    {
-      "id": "graphic-desinging-logo-designs-pottery-co-logo-image-b263e6",
-      "title": "The Pottery Co logo",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-pottery-co-logo-image-b263e6.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-pottery-co-logo-image-b263e6-t.webp",
-      "w": 1500,
-      "h": 1500
-    },
-    {
-      "id": "graphic-desinging-logo-designs-vintrix-logo-vector-5c2a05",
-      "title": "Vintrix logo",
-      "category": "Logo Design",
-      "client": "Brand identity",
-      "type": "image",
-      "kind": "Logo",
-      "src": "assets/work/graphic-desinging-logo-designs-vintrix-logo-vector-5c2a05.webp",
-      "thumb": "assets/work/graphic-desinging-logo-designs-vintrix-logo-vector-5c2a05-t.webp",
-      "w": 1024,
-      "h": 1024
+      "h": 4e3,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "graphic-desinging-logo-designs-glowing-logo-202743",
@@ -24527,7 +25125,9 @@
       "src": "assets/work/graphic-desinging-logo-designs-glowing-logo-202743.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-glowing-logo-202743-t.webp",
       "w": 4096,
-      "h": 4096
+      "h": 4096,
+      "industry": "retail",
+      "clientId": "gamlawala"
     },
     {
       "id": "graphic-desinging-logo-designs-go-green-logo-white-43d3ae",
@@ -24539,7 +25139,51 @@
       "src": "assets/work/graphic-desinging-logo-designs-go-green-logo-white-43d3ae.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-go-green-logo-white-43d3ae-t.webp",
       "w": 640,
-      "h": 640
+      "h": 640,
+      "industry": "retail",
+      "clientId": "gamlawala"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-24-hour-emergency-service-label-9006215-a03085",
+      "title": "24/7 emergency services label",
+      "category": "Logo Design",
+      "client": "Hospital & doctor videos",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-24-hour-emergency-service-label-9006215-a03085.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-24-hour-emergency-service-label-9006215-a03085-t.webp",
+      "w": 1200,
+      "h": 1200,
+      "industry": "healthcare",
+      "clientId": "hospital-and-doctor-videos"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-dp-logo-58733e",
+      "title": "Ignexa Solutions logo",
+      "category": "Logo Design",
+      "client": "Ignexa Solutions",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-dp-logo-58733e.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-dp-logo-58733e-t.webp",
+      "w": 1563,
+      "h": 1563,
+      "industry": "tech",
+      "clientId": "ignexa-solutions"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-final-logo-3-png-c933c4",
+      "title": "Ignexa Solutions logo (dark)",
+      "category": "Logo Design",
+      "client": "Ignexa Solutions",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-final-logo-3-png-c933c4.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-final-logo-3-png-c933c4-t.webp",
+      "w": 1563,
+      "h": 1563,
+      "industry": "tech",
+      "clientId": "ignexa-solutions"
     },
     {
       "id": "graphic-desinging-logo-designs-mahesh-devalla-logo-1-91922e",
@@ -24551,7 +25195,177 @@
       "src": "assets/work/graphic-desinging-logo-designs-mahesh-devalla-logo-1-91922e.webp",
       "thumb": "assets/work/graphic-desinging-logo-designs-mahesh-devalla-logo-1-91922e-t.webp",
       "w": 2e3,
-      "h": 2e3
+      "h": 2e3,
+      "industry": "tech",
+      "clientId": "mahesh-devalla"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-mathrushree-dp-logo-1-81ffc6",
+      "title": "Mathrushree Fertility Centre logo",
+      "category": "Logo Design",
+      "client": "Mathrushree Fertility",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-mathrushree-dp-logo-1-81ffc6.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-mathrushree-dp-logo-1-81ffc6-t.webp",
+      "w": 4e3,
+      "h": 4e3,
+      "industry": "healthcare",
+      "clientId": "mathrushree-fertility"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-mathrushree-dp-logo-2-a30060",
+      "title": "Mathrushree Fertility Centre logo (wide)",
+      "category": "Logo Design",
+      "client": "Mathrushree Fertility",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-mathrushree-dp-logo-2-a30060.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-mathrushree-dp-logo-2-a30060-t.webp",
+      "w": 4e3,
+      "h": 4e3,
+      "industry": "healthcare",
+      "clientId": "mathrushree-fertility"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-mindx-full-logo-with-bg-7e3109",
+      "title": "Mindx full logo",
+      "category": "Logo Design",
+      "client": "Mindx",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-mindx-full-logo-with-bg-7e3109.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-mindx-full-logo-with-bg-7e3109-t.webp",
+      "w": 2553,
+      "h": 945,
+      "industry": "tech",
+      "clientId": "mindx"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-mindx-dp-logo-cfd5c2",
+      "title": "Mindx icon",
+      "category": "Logo Design",
+      "client": "Mindx",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-mindx-dp-logo-cfd5c2.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-mindx-dp-logo-cfd5c2-t.webp",
+      "w": 2e3,
+      "h": 2e3,
+      "industry": "tech",
+      "clientId": "mindx"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-oxford-logo-animation-9ad21a",
+      "title": "Oxford High School crest",
+      "category": "Logo Design",
+      "client": "Oxford High School",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-oxford-logo-animation-9ad21a.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-oxford-logo-animation-9ad21a-t.webp",
+      "w": 2e3,
+      "h": 2e3,
+      "industry": "education",
+      "clientId": "oxford-high-school"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-5-253ddb",
+      "title": "RAJ logo",
+      "category": "Logo Design",
+      "client": "RAJ",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-5-253ddb.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-5-253ddb-t.webp",
+      "w": 1563,
+      "h": 1563,
+      "industry": "services",
+      "clientId": "raj"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-rai-logo-8afea0",
+      "title": "RAJ logo (dark)",
+      "category": "Logo Design",
+      "client": "RAJ",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-rai-logo-8afea0.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-rai-logo-8afea0-t.webp",
+      "w": 1563,
+      "h": 1563,
+      "industry": "services",
+      "clientId": "raj"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-sri-shyam-baba-logo-og-9cafe7",
+      "title": "Sri Shyam Baba Electronics logo",
+      "category": "Logo Design",
+      "client": "Sri Shyam Baba Electronics",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-sri-shyam-baba-logo-og-9cafe7.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-sri-shyam-baba-logo-og-9cafe7-t.webp",
+      "w": 1236,
+      "h": 1236,
+      "industry": "retail",
+      "clientId": "sri-shyam-baba-electronics"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-srs-sliver-logo-3eaafa",
+      "title": "SRS Silvers logo",
+      "category": "Logo Design",
+      "client": "SRS Silvers",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-srs-sliver-logo-3eaafa.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-srs-sliver-logo-3eaafa-t.webp",
+      "w": 4e3,
+      "h": 4e3,
+      "industry": "retail",
+      "clientId": "srs-silvers"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-the-conroy-school-logo-1-eba287",
+      "title": "The Conroy School crest",
+      "category": "Logo Design",
+      "client": "The Conroy School",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-the-conroy-school-logo-1-eba287.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-the-conroy-school-logo-1-eba287-t.webp",
+      "w": 4e3,
+      "h": 4e3,
+      "industry": "education",
+      "clientId": "the-conroy-school"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-pottery-co-logo-image-b263e6",
+      "title": "The Pottery Co logo",
+      "category": "Logo Design",
+      "client": "The Pottery Co",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-pottery-co-logo-image-b263e6.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-pottery-co-logo-image-b263e6-t.webp",
+      "w": 1500,
+      "h": 1500,
+      "industry": "retail",
+      "clientId": "the-pottery-co"
+    },
+    {
+      "id": "graphic-desinging-logo-designs-vintrix-logo-vector-5c2a05",
+      "title": "Vintrix logo",
+      "category": "Logo Design",
+      "client": "Vintrix",
+      "type": "image",
+      "kind": "Logo",
+      "src": "assets/work/graphic-desinging-logo-designs-vintrix-logo-vector-5c2a05.webp",
+      "thumb": "assets/work/graphic-desinging-logo-designs-vintrix-logo-vector-5c2a05-t.webp",
+      "w": 1024,
+      "h": 1024,
+      "industry": "tech",
+      "clientId": "vintrix"
     },
     {
       "id": "content-writing-and-marketing-plans-ai-brief-social-media-marketing-pl-657439",
@@ -24564,7 +25378,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-ai-brief-social-media-marketing-pl-657439-t.webp",
       "w": 510,
       "h": 660,
-      "pages": 3
+      "pages": 3,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "content-writing-and-marketing-plans-ai-brief-video-editor-intern-jd-83c3da",
@@ -24577,7 +25393,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-ai-brief-video-editor-intern-jd-83c3da-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 2
+      "pages": 2,
+      "industry": "tech",
+      "clientId": "ai-brief"
     },
     {
       "id": "content-writing-and-marketing-plans-aarogyasri-pterygium-treatment-scr-224d4a",
@@ -24590,7 +25408,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-aarogyasri-pterygium-treatment-scr-224d4a-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 1
+      "pages": 1,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "content-writing-and-marketing-plans-arogya-ai-video-script-abd1e3",
@@ -24603,7 +25423,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-arogya-ai-video-script-abd1e3-t.webp",
       "w": 510,
       "h": 660,
-      "pages": 1
+      "pages": 1,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "content-writing-and-marketing-plans-arogya-robotic-knee-replacement-q--14219b",
@@ -24616,7 +25438,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-arogya-robotic-knee-replacement-q--14219b-t.webp",
       "w": 510,
       "h": 660,
-      "pages": 6
+      "pages": 6,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "content-writing-and-marketing-plans-cedar-valley-school-30days-marketi-658342",
@@ -24629,7 +25453,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-cedar-valley-school-30days-marketi-658342-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 5
+      "pages": 5,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "content-writing-and-marketing-plans-cedar-valley-school-digital-market-4fc673",
@@ -24642,7 +25468,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-cedar-valley-school-digital-market-4fc673-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 2
+      "pages": 2,
+      "industry": "education",
+      "clientId": "cedar-valley-school"
     },
     {
       "id": "content-writing-and-marketing-plans-dr-rajitha-clinic-content-strategy-f833fa",
@@ -24655,7 +25483,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-dr-rajitha-clinic-content-strategy-f833fa-t.webp",
       "w": 510,
       "h": 660,
-      "pages": 3
+      "pages": 3,
+      "industry": "healthcare",
+      "clientId": "dr-rajitha-s-clinic"
     },
     {
       "id": "graphic-desinging-shaym-baba-company-gamlawala-all-planters-c586ae",
@@ -24668,7 +25498,9 @@
       "thumb": "assets/work/graphic-desinging-shaym-baba-company-gamlawala-all-planters-c586ae-t.webp",
       "w": 675,
       "h": 844,
-      "pages": 35
+      "pages": 35,
+      "industry": "retail",
+      "clientId": "gamlawala"
     },
     {
       "id": "content-writing-and-marketing-plans-jf-mens-store-complete-strategy-pl-cfc185",
@@ -24681,7 +25513,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-jf-mens-store-complete-strategy-pl-cfc185-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 7
+      "pages": 7,
+      "industry": "retail",
+      "clientId": "jf-men-s-store"
     },
     {
       "id": "content-writing-and-marketing-plans-mathrushree-fertility-scripts-a15c9c",
@@ -24694,7 +25528,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-mathrushree-fertility-scripts-a15c9c-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 3
+      "pages": 3,
+      "industry": "healthcare",
+      "clientId": "mathrushree-fertility"
     },
     {
       "id": "content-writing-and-marketing-plans-what-foods-increase-your-cancer-ri-430276",
@@ -24707,7 +25543,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-what-foods-increase-your-cancer-ri-430276-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 1
+      "pages": 1,
+      "industry": "healthcare",
+      "clientId": "oncology"
     },
     {
       "id": "content-writing-and-marketing-plans-harish-sir-oncology-script-5ce35b",
@@ -24720,7 +25558,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-harish-sir-oncology-script-5ce35b-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 1
+      "pages": 1,
+      "industry": "healthcare",
+      "clientId": "oncology"
     },
     {
       "id": "content-writing-and-marketing-plans-vs-eko-blocks-marketing-plan-3eeb2e",
@@ -24733,7 +25573,9 @@
       "thumb": "assets/work/content-writing-and-marketing-plans-vs-eko-blocks-marketing-plan-3eeb2e-t.webp",
       "w": 497,
       "h": 702,
-      "pages": 3
+      "pages": 3,
+      "industry": "services",
+      "clientId": "vs-eco-blocks"
     },
     {
       "id": "influncer-marketing-and-social-media-26-28-227-e946e9",
@@ -24745,7 +25587,9 @@
       "src": "assets/work/influncer-marketing-and-social-media-26-28-227-e946e9.webp",
       "thumb": "assets/work/influncer-marketing-and-social-media-26-28-227-e946e9-t.webp",
       "w": 4619,
-      "h": 2598
+      "h": 2598,
+      "industry": "community",
+      "clientId": "influencer-marketing"
     },
     {
       "id": "influncer-marketing-and-social-media-32-21-594-89cc9f",
@@ -24757,7 +25601,9 @@
       "src": "assets/work/influncer-marketing-and-social-media-32-21-594-89cc9f.webp",
       "thumb": "assets/work/influncer-marketing-and-social-media-32-21-594-89cc9f-t.webp",
       "w": 4619,
-      "h": 2598
+      "h": 2598,
+      "industry": "community",
+      "clientId": "influencer-marketing"
     },
     {
       "id": "influncer-marketing-and-social-media-43-27-282-4becd0",
@@ -24769,7 +25615,9 @@
       "src": "assets/work/influncer-marketing-and-social-media-43-27-282-4becd0.webp",
       "thumb": "assets/work/influncer-marketing-and-social-media-43-27-282-4becd0-t.webp",
       "w": 4619,
-      "h": 2598
+      "h": 2598,
+      "industry": "community",
+      "clientId": "influencer-marketing"
     },
     {
       "id": "influncer-marketing-and-social-media-50-27-392-ba66a5",
@@ -24781,7 +25629,9 @@
       "src": "assets/work/influncer-marketing-and-social-media-50-27-392-ba66a5.webp",
       "thumb": "assets/work/influncer-marketing-and-social-media-50-27-392-ba66a5-t.webp",
       "w": 4619,
-      "h": 2598
+      "h": 2598,
+      "industry": "community",
+      "clientId": "influencer-marketing"
     },
     {
       "id": "influncer-marketing-and-social-media-53-14-804-77cb1d",
@@ -24793,7 +25643,9 @@
       "src": "assets/work/influncer-marketing-and-social-media-53-14-804-77cb1d.webp",
       "thumb": "assets/work/influncer-marketing-and-social-media-53-14-804-77cb1d-t.webp",
       "w": 4619,
-      "h": 2598
+      "h": 2598,
+      "industry": "community",
+      "clientId": "influencer-marketing"
     },
     {
       "id": "influncer-marketing-and-social-media-53-20-058-7b73e9",
@@ -24805,7 +25657,9 @@
       "src": "assets/work/influncer-marketing-and-social-media-53-20-058-7b73e9.webp",
       "thumb": "assets/work/influncer-marketing-and-social-media-53-20-058-7b73e9-t.webp",
       "w": 4619,
-      "h": 2598
+      "h": 2598,
+      "industry": "community",
+      "clientId": "influencer-marketing"
     },
     {
       "id": "ai-voiceovers-ai-voice-agrani-college-ad-generated-audio-april-16-2026-b334ee",
@@ -24818,7 +25672,9 @@
       "thumb": "",
       "w": 1,
       "h": 1,
-      "dur": 67
+      "dur": 67,
+      "industry": "education",
+      "clientId": "agrani-college"
     },
     {
       "id": "ai-voiceovers-arogya-hospitals-announcements-807abf",
@@ -24831,7 +25687,9 @@
       "thumb": "",
       "w": 1,
       "h": 1,
-      "dur": 145.1
+      "dur": 145.1,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     },
     {
       "id": "ai-voiceovers-oxygen-cylinders-voice-ef1de6",
@@ -24844,23 +25702,46 @@
       "thumb": "",
       "w": 1,
       "h": 1,
-      "dur": 58.7
+      "dur": 58.7,
+      "industry": "healthcare",
+      "clientId": "arogya-hospitals"
     }
   ];
 
   // src/components/Work.jsx
-  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
   var PAGE = 18;
+  var TYPE_LABEL = { "Video & Reels": "Videos", "Graphic Design": "Designs", "Logo Design": "Logos", "Marketing Plans": "Plans & scripts", "Influencer & Social": "Influencer", "AI Voiceovers": "Voiceovers" };
   var fmtDur = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
   var canHover = () => typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  var slug = (s) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  var typeCounts = (list) => categories.map((c) => [c, list.filter((p) => p.category === c).length]).filter(([, n]) => n);
   function badge(p) {
     if (p.type === "video") return `${p.kind} \xB7 ${fmtDur(p.dur || 0)}`;
     if (p.type === "pdf") return p.pages ? `PDF \xB7 ${p.pages} pages` : "PDF";
     if (p.type === "audio") return `Audio \xB7 ${fmtDur(p.dur || 0)}`;
     return p.kind;
   }
-  function Card({ p, index, onOpen }) {
-    const vidRef = (0, import_react4.useRef)(null);
+  function parseHash() {
+    const h = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    const parts = h.split("/");
+    if (parts[0] !== "work") return null;
+    if (parts[1] === "type") {
+      const cat = categories.find((c) => slug(c) === parts[2]);
+      return { view: "type", industry: null, client: "all", type: cat || "All" };
+    }
+    const ind = industries.find((i) => i.id === parts[1]);
+    if (!ind) return { view: "industry", industry: null, client: "all", type: "All" };
+    const cl = ind.clients.find((c) => c.id === parts[2]);
+    return { view: "industry", industry: ind.id, client: cl ? cl.id : "all", type: "All" };
+  }
+  function hashFor(s) {
+    if (s.view === "type") return s.type === "All" ? "#work/type" : `#work/type/${slug(s.type)}`;
+    if (!s.industry) return "#work";
+    return s.client === "all" ? `#work/${s.industry}` : `#work/${s.industry}/${s.client}`;
+  }
+  function Card({ p, onOpen, showClient = true }) {
+    const vidRef = (0, import_react5.useRef)(null);
     const start = () => {
       if (p.type !== "video" || !canHover() || document.documentElement.classList.contains("no-motion")) return;
       const v = vidRef.current;
@@ -24873,27 +25754,29 @@
       const v = vidRef.current;
       if (v && !v.paused) v.pause();
     };
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("li", { className: "work-item", "data-reveal": true, style: { "--d": `${index % 6 * 50}ms` }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("button", { className: `work-card work-card--${p.type}`, onClick: () => onOpen(index), onMouseEnter: start, onMouseLeave: stop, onFocus: start, onBlur: stop, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "work-card__media", style: p.type === "audio" ? void 0 : { aspectRatio: `${p.w} / ${p.h}` }, children: [
-        p.type === "audio" ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "wave", "aria-hidden": "true", children: Array.from({ length: 28 }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("i", { style: { "--i": i } }, i)) }) : /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("img", { src: p.thumb, alt: "", loading: "lazy", decoding: "async", width: p.w, height: p.h }),
-        p.type === "video" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("video", { ref: vidRef, muted: true, loop: true, playsInline: true, preload: "none", "aria-hidden": "true" }),
-        (p.type === "video" || p.type === "audio") && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "play", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Play, { width: 18, height: 18 }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "tag", children: badge(p) })
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("li", { className: "work-item", "data-reveal": true, children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: `work-card work-card--${p.type}`, onClick: onOpen, onMouseEnter: start, onMouseLeave: stop, onFocus: start, onBlur: stop, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "work-card__media", style: p.type === "audio" ? void 0 : { aspectRatio: `${p.w} / ${p.h}` }, children: [
+        p.type === "audio" ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "wave", "aria-hidden": "true", children: Array.from({ length: 28 }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("i", { style: { "--i": i } }, i)) }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { src: p.thumb, alt: "", loading: "lazy", decoding: "async", width: p.w, height: p.h }),
+        p.type === "video" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("video", { ref: vidRef, muted: true, loop: true, playsInline: true, preload: "none", "aria-hidden": "true" }),
+        (p.type === "video" || p.type === "audio") && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "play", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Play, { width: 18, height: 18 }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "tag", children: badge(p) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "work-card__title", children: p.title }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "work-card__meta", children: [
-        p.client,
-        " / ",
-        p.category
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "work-card__title", children: p.title }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "work-card__meta", children: [
+        showClient ? `${p.client} / ` : "",
+        TYPE_LABEL[p.category] || p.category
       ] })
     ] }) });
   }
+  function Grid({ list, onOpen, showClient }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "work-grid", children: list.map((p) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Card, { p, showClient, onOpen: () => onOpen(p) }, p.id)) });
+  }
   function Viewer({ list, index, setIndex, onClose }) {
     const p = list[index];
-    const ref = (0, import_react4.useRef)(null);
-    const lastFocus = (0, import_react4.useRef)(null);
-    const go = (0, import_react4.useCallback)((d) => setIndex((i) => (i + d + list.length) % list.length), [list.length, setIndex]);
-    (0, import_react4.useEffect)(() => {
+    const ref = (0, import_react5.useRef)(null);
+    const lastFocus = (0, import_react5.useRef)(null);
+    const go = (0, import_react5.useCallback)((d) => setIndex((i) => (i + d + list.length) % list.length), [list.length, setIndex]);
+    (0, import_react5.useEffect)(() => {
       lastFocus.current = document.activeElement;
       ref.current?.querySelector(".viewer__close")?.focus();
       document.body.style.overflow = "hidden";
@@ -24902,7 +25785,7 @@
         lastFocus.current?.focus?.();
       };
     }, []);
-    (0, import_react4.useEffect)(() => {
+    (0, import_react5.useEffect)(() => {
       const onKey = (e) => {
         if (e.key === "Escape") onClose();
         else if (e.key === "ArrowRight") go(1);
@@ -24922,118 +25805,319 @@
       document.addEventListener("keydown", onKey);
       return () => document.removeEventListener("keydown", onKey);
     }, [go, onClose]);
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "viewer", role: "dialog", "aria-modal": "true", "aria-labelledby": "viewer-title", ref, onClick: (e) => e.target === e.currentTarget && onClose(), children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "viewer__bar", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "mono muted", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "viewer", role: "dialog", "aria-modal": "true", "aria-labelledby": "viewer-title", ref, onClick: (e) => e.target === e.currentTarget && onClose(), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "viewer__bar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "mono muted", children: [
           String(index + 1).padStart(2, "0"),
           " / ",
           String(list.length).padStart(2, "0")
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "viewer__close", onClick: onClose, "aria-label": "Close viewer", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Close, {}) })
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "viewer__close", onClick: onClose, "aria-label": "Close viewer", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Close, {}) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "viewer__stage", onClick: (e) => e.target === e.currentTarget && onClose(), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "viewer__nav viewer__nav--prev", onClick: () => go(-1), "aria-label": "Previous piece", children: "\u2039" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "viewer__media", children: [
-          p.type === "image" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("img", { src: p.src, alt: p.title }),
-          p.type === "video" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("video", { src: p.src, poster: p.thumb, controls: true, autoPlay: true, playsInline: true }),
-          p.type === "audio" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "viewer__audio", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "wave wave--big", "aria-hidden": "true", children: Array.from({ length: 40 }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("i", { style: { "--i": i } }, i)) }),
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("audio", { src: p.src, controls: true, autoPlay: true })
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "viewer__stage", onClick: (e) => e.target === e.currentTarget && onClose(), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "viewer__nav viewer__nav--prev", onClick: () => go(-1), "aria-label": "Previous piece", children: "\u2039" }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "viewer__media", children: [
+          p.type === "image" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { src: p.src, alt: p.title }),
+          p.type === "video" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("video", { src: p.src, poster: p.thumb, controls: true, autoPlay: true, playsInline: true }),
+          p.type === "audio" && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "viewer__audio", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "wave wave--big", "aria-hidden": "true", children: Array.from({ length: 40 }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("i", { style: { "--i": i } }, i)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("audio", { src: p.src, controls: true, autoPlay: true })
           ] }),
-          p.type === "pdf" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("a", { className: "viewer__pdf", href: p.src, target: "_blank", rel: "noopener noreferrer", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("img", { src: p.thumb, alt: `First page of ${p.title}` }),
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "btn btn--accent", children: [
+          p.type === "pdf" && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { className: "viewer__pdf", href: p.src, target: "_blank", rel: "noopener noreferrer", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { src: p.thumb, alt: `First page of ${p.title}` }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "btn btn--accent", children: [
               "Open full document ",
-              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(ArrowUpRight, { width: 16, height: 16 })
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUpRight, { width: 16, height: 16 })
             ] })
           ] })
         ] }, p.id),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "viewer__nav viewer__nav--next", onClick: () => go(1), "aria-label": "Next piece", children: "\u203A" })
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "viewer__nav viewer__nav--next", onClick: () => go(1), "aria-label": "Next piece", children: "\u203A" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "viewer__info", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "eyebrow", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "viewer__info", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "eyebrow", children: [
             p.client,
             " \xB7 ",
             badge(p)
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h3", { id: "viewer-title", className: "viewer__title", children: p.title })
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { id: "viewer-title", className: "viewer__title", children: p.title })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("a", { className: "btn btn--ghost btn--small", href: p.src, target: "_blank", rel: "noopener noreferrer", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { className: "btn btn--ghost btn--small", href: p.src, target: "_blank", rel: "noopener noreferrer", children: [
           "Open original size ",
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(ArrowUpRight, { width: 14, height: 14 })
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUpRight, { width: 14, height: 14 })
         ] })
       ] })
     ] });
   }
-  function Work() {
-    const [filter, setFilter] = (0, import_react4.useState)("All");
-    const [query, setQuery] = (0, import_react4.useState)("");
-    const [shown, setShown] = (0, import_react4.useState)(PAGE);
-    const [open, setOpen] = (0, import_react4.useState)(-1);
-    const counts = (0, import_react4.useMemo)(() => Object.fromEntries(categories.map((c) => [c, projects.filter((p) => p.category === c).length])), []);
-    const list = (0, import_react4.useMemo)(() => {
-      const q = query.trim().toLowerCase();
-      return projects.filter((p) => filter === "All" || p.category === filter).filter((p) => !q || `${p.title} ${p.client} ${p.category} ${p.kind}`.toLowerCase().includes(q));
-    }, [filter, query]);
-    useRevealAll([filter, query, shown]);
-    const pick = (f) => {
-      setFilter(f);
-      setShown(PAGE);
-    };
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("section", { className: "section", id: "work", "aria-labelledby": "work-title", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "container", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "work-head", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "section-head", "data-reveal": true, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "eyebrow", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "mono", children: "01" }),
-              " / Selected work \xB7 ",
-              projects.length,
+  function Mosaic({ items }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "folder__mosaic", "aria-hidden": "true", children: items.map((p) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "folder__tile", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { src: p.thumb, alt: "", loading: "lazy" }) }, p.id)) });
+  }
+  function pickCovers(list, n = 3) {
+    const visual = list.filter((p) => p.type === "image" || p.type === "video");
+    const sorted = [...visual].sort((a, b) => (b.featured || 0) - (a.featured || 0));
+    const out = [], seen = /* @__PURE__ */ new Set();
+    for (const p of sorted) {
+      if (out.length < n && !seen.has(p.client)) {
+        out.push(p);
+        seen.add(p.client);
+      }
+    }
+    for (const p of sorted) {
+      if (out.length < n && !out.includes(p)) out.push(p);
+    }
+    return out;
+  }
+  function Folders({ go }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "folders", children: industries.map((ind, i) => {
+      const list = projects.filter((p) => p.industry === ind.id);
+      return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("li", { "data-reveal": true, style: { "--d": `${i % 3 * 70}ms` }, children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { className: "folder", href: `#work/${ind.id}`, onClick: (e) => {
+        e.preventDefault();
+        go({ view: "industry", industry: ind.id, client: "all", type: "All" });
+      }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Mosaic, { items: pickCovers(list) }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "folder__body", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "folder__top", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "folder__num mono", children: String(i + 1).padStart(2, "0") }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "folder__count mono", children: [
+              ind.clients.length,
+              " ",
+              ind.clients.length === 1 ? "client" : "clients",
+              " \xB7 ",
+              list.length,
               " pieces"
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("h2", { className: "display", id: "work-title", children: [
-              "Work that ",
-              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "accent", children: "performs." })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("label", { className: "search", "data-reveal": true, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Search, { width: 16, height: 16 }),
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "sr-only", children: "Search work" }),
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("input", { type: "search", placeholder: "Search client or title", value: query, onChange: (e) => {
-              setQuery(e.target.value);
-              setShown(PAGE);
-            } })
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "folder__name", children: ind.name }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "folder__clients", children: [
+            ind.clients.slice(0, 4).map((c) => c.name).join(" \xB7 "),
+            ind.clients.length > 4 ? ` +${ind.clients.length - 4}` : ""
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "folder__types", children: typeCounts(list).map(([c, n]) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "mini-chip", children: [
+            TYPE_LABEL[c],
+            " ",
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("b", { children: n })
+          ] }, c)) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "folder__go", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUpRight, {}) })
+      ] }) }, ind.id);
+    }) });
+  }
+  function Work() {
+    const [nav, setNav] = (0, import_react5.useState)(() => typeof window !== "undefined" && parseHash() || { view: "industry", industry: null, client: "all", type: "All" });
+    const [query, setQuery] = (0, import_react5.useState)("");
+    const [shown, setShown] = (0, import_react5.useState)(PAGE);
+    const [viewer, setViewer] = (0, import_react5.useState)(null);
+    const sectionRef = (0, import_react5.useRef)(null);
+    const first = (0, import_react5.useRef)(true);
+    (0, import_react5.useEffect)(() => {
+      const onPop = () => {
+        const s = parseHash();
+        if (s) {
+          setNav(s);
+          setQuery("");
+        }
+      };
+      window.addEventListener("popstate", onPop);
+      window.addEventListener("hashchange", onPop);
+      return () => {
+        window.removeEventListener("popstate", onPop);
+        window.removeEventListener("hashchange", onPop);
+      };
+    }, []);
+    (0, import_react5.useEffect)(() => {
+      if (first.current) {
+        first.current = false;
+        if (parseHash() && window.location.hash !== "#work") setTimeout(() => sectionRef.current?.scrollIntoView(), 50);
+      }
+    }, []);
+    const go = (next) => {
+      const s = { ...nav, ...next };
+      setNav(s);
+      setShown(PAGE);
+      setQuery("");
+      const h = hashFor(s);
+      if (window.location.hash !== h) history.pushState(null, "", h);
+      const top = sectionRef.current?.getBoundingClientRect().top ?? 0;
+      if (top < -40 || top > window.innerHeight * 0.5) sectionRef.current?.scrollIntoView({ behavior: document.documentElement.classList.contains("no-motion") ? "auto" : "smooth" });
+    };
+    const ind = industries.find((i) => i.id === nav.industry);
+    const q = query.trim().toLowerCase();
+    const searchList = (0, import_react5.useMemo)(() => !q ? [] : projects.filter((p) => `${p.title} ${p.client} ${p.category} ${p.kind} ${industries.find((i) => i.id === p.industry)?.name}`.toLowerCase().includes(q)), [q]);
+    const typeList = (0, import_react5.useMemo)(() => projects.filter((p) => nav.type === "All" || p.category === nav.type), [nav.type]);
+    const indList = (0, import_react5.useMemo)(() => ind ? projects.filter((p) => p.industry === ind.id) : [], [ind]);
+    const indFiltered = (0, import_react5.useMemo)(() => indList.filter((p) => (nav.client === "all" || p.clientId === nav.client) && (nav.type === "All" || p.category === nav.type)), [indList, nav.client, nav.type]);
+    const groups = (0, import_react5.useMemo)(() => ind ? ind.clients.map((c) => ({ ...c, items: indFiltered.filter((p) => p.clientId === c.id) })).filter((g) => g.items.length) : [], [ind, indFiltered]);
+    const highlights = (0, import_react5.useMemo)(() => [...projects].filter((p) => p.featured).sort((a, b) => b.featured - a.featured).slice(0, 8), []);
+    useRevealAll([nav, q, shown]);
+    const openFrom = (list) => (p) => {
+      const index = list.findIndex((x) => x.id === p.id);
+      setViewer({ list, index: index < 0 ? 0 : index });
+    };
+    const groupedList = groups.flatMap((g) => g.items);
+    const typesHere = ind ? typeCounts(nav.client === "all" ? indList : indList.filter((p) => p.clientId === nav.client)) : [];
+    const nextInd = ind ? industries[(industries.indexOf(ind) + 1) % industries.length] : null;
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("section", { className: "section", id: "work", "aria-labelledby": "work-title", ref: sectionRef, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "work-head", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "section-head", "data-reveal": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "eyebrow", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "mono", children: "01" }),
+              " / Selected work \xB7 ",
+              projects.length,
+              " pieces \xB7 ",
+              industries.reduce((n, i) => n + i.clients.length, 0),
+              " clients"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("h2", { className: "display", id: "work-title", children: [
+              "Work that ",
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "accent", children: "performs." })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "work-controls", "data-reveal": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "seg", role: "tablist", "aria-label": "Browse work", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { role: "tab", "aria-selected": nav.view === "industry", className: nav.view === "industry" ? "is-on" : "", onClick: () => go({ view: "industry", industry: null, client: "all", type: "All" }), children: "By industry" }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { role: "tab", "aria-selected": nav.view === "type", className: nav.view === "type" ? "is-on" : "", onClick: () => go({ view: "type", industry: null, client: "all", type: "All" }), children: "By type" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { className: "search", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Search, { width: 16, height: 16 }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "sr-only", children: "Search all work" }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("input", { type: "search", placeholder: "Search client or title", value: query, onChange: (e) => {
+                setQuery(e.target.value);
+                setShown(PAGE);
+              } })
+            ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "chips work-filters", role: "group", "aria-label": "Filter work by category", "data-reveal": true, children: ["All", ...categories].map((f) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("button", { className: `chip ${filter === f ? "is-on" : ""}`, "aria-pressed": filter === f, onClick: () => pick(f), children: [
-          f,
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "chip__n", children: f === "All" ? projects.length : counts[f] })
-        ] }, f)) }),
-        list.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "muted", children: [
-          "Nothing matches \u201C",
-          query,
-          "\u201D. Try a client name like \u201CArogya\u201D or \u201CConroy\u201D."
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("ul", { className: "work-grid", children: list.slice(0, shown).map((p, i) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Card, { p, index: i, onOpen: setOpen }, p.id)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "work-more", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "mono muted", "aria-live": "polite", children: [
-            "Showing ",
-            Math.min(shown, list.length),
-            " of ",
-            list.length
-          ] }),
-          shown < list.length && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { className: "btn btn--ghost", onClick: () => setShown(shown + PAGE), children: "Load more" }),
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("a", { className: "btn btn--accent", href: site.shortPortfolioLink, target: "_blank", rel: "noopener noreferrer", children: [
-            "Full portfolio on Drive ",
-            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(ArrowUpRight, { width: 16, height: 16 })
+        q ? (
+          /* ---------- search results ---------- */
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "work-panel", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "crumbs", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "mono muted", "aria-live": "polite", children: [
+                searchList.length,
+                " result",
+                searchList.length === 1 ? "" : "s",
+                " for \u201C",
+                query,
+                "\u201D"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "link-btn", onClick: () => setQuery(""), children: "Clear search" })
+            ] }),
+            searchList.length ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Grid, { list: searchList.slice(0, shown), onOpen: openFrom(searchList) }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "muted", children: "Nothing matches. Try a client like \u201CArogya\u201D or \u201CConroy\u201D." }),
+            shown < searchList.length && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "work-more", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "btn btn--ghost", onClick: () => setShown(shown + PAGE), children: "Load more" }) })
           ] })
-        ] })
+        ) : nav.view === "type" ? (
+          /* ---------- by type ---------- */
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "work-panel", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "chips work-filters", role: "group", "aria-label": "Filter by type of work", children: ["All", ...categories].map((f) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: `chip ${nav.type === f ? "is-on" : ""}`, "aria-pressed": nav.type === f, onClick: () => go({ type: f }), children: [
+              f === "All" ? "All work" : f,
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "chip__n", children: f === "All" ? projects.length : projects.filter((p) => p.category === f).length })
+            ] }, f)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Grid, { list: typeList.slice(0, shown), onOpen: openFrom(typeList) }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "work-more", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "mono muted", "aria-live": "polite", children: [
+                "Showing ",
+                Math.min(shown, typeList.length),
+                " of ",
+                typeList.length
+              ] }),
+              shown < typeList.length && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "btn btn--ghost", onClick: () => setShown(shown + PAGE), children: "Load more" })
+            ] })
+          ] })
+        ) : !ind ? (
+          /* ---------- landing: highlights + folders ---------- */
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "work-panel", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "sub-head", "data-reveal": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { className: "sub-title", children: "Highlights" }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "muted small", children: "Hand-picked pieces across all clients" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "highlights", children: highlights.map((p) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Card, { p, onOpen: () => openFrom(highlights)(p) }, p.id)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "sub-head", "data-reveal": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { className: "sub-title", children: "Browse by industry" }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "muted small", children: "Open a folder to see every client\u2019s work, grouped and filterable by type" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Folders, { go }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "work-more", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { className: "btn btn--ghost", href: site.shortPortfolioLink, target: "_blank", rel: "noopener noreferrer", children: [
+              "Full portfolio on Drive ",
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUpRight, { width: 16, height: 16 })
+            ] }) })
+          ] })
+        ) : (
+          /* ---------- inside an industry folder ---------- */
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "work-panel", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("nav", { className: "crumbs", "aria-label": "Breadcrumb", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("ol", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { href: "#work", onClick: (e) => {
+                e.preventDefault();
+                go({ industry: null, client: "all", type: "All" });
+              }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Folder, { width: 14, height: 14 }),
+                " All industries"
+              ] }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("li", { "aria-current": nav.client === "all" ? "page" : void 0, children: nav.client === "all" ? ind.name : /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("a", { href: `#work/${ind.id}`, onClick: (e) => {
+                e.preventDefault();
+                go({ client: "all", type: "All" });
+              }, children: ind.name }) }),
+              nav.client !== "all" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("li", { "aria-current": "page", children: ind.clients.find((c) => c.id === nav.client)?.name })
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "ind-head", "data-reveal": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { className: "display display--sm", children: nav.client === "all" ? ind.name : ind.clients.find((c) => c.id === nav.client)?.name }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "muted", children: nav.client === "all" ? ind.blurb : `${ind.name} \xB7 ${indFiltered.length} pieces` })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "filter-row", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "label", children: "Client" }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "chips chips--scroll", role: "group", "aria-label": "Filter by client", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: `chip ${nav.client === "all" ? "is-on" : ""}`, "aria-pressed": nav.client === "all", onClick: () => go({ client: "all", type: "All" }), children: [
+                  "All clients",
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "chip__n", children: indList.length })
+                ] }),
+                ind.clients.map((c) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: `chip ${nav.client === c.id ? "is-on" : ""}`, "aria-pressed": nav.client === c.id, onClick: () => go({ client: c.id, type: "All" }), children: [
+                  c.name,
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "chip__n", children: c.count })
+                ] }, c.id))
+              ] })
+            ] }),
+            typesHere.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "filter-row", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "label", children: "Type" }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "chips chips--scroll", role: "group", "aria-label": "Filter by type of work", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: `chip chip--sm ${nav.type === "All" ? "is-on" : ""}`, "aria-pressed": nav.type === "All", onClick: () => go({ type: "All" }), children: "All types" }),
+                typesHere.map(([c, n]) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: `chip chip--sm ${nav.type === c ? "is-on" : ""}`, "aria-pressed": nav.type === c, onClick: () => go({ type: c }), children: [
+                  TYPE_LABEL[c],
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "chip__n", children: n })
+                ] }, c))
+              ] })
+            ] }),
+            nav.client === "all" ? groups.map((g) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "client-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "client-group__head", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h4", { children: g.name }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "mono muted", children: [
+                  g.items.length,
+                  " ",
+                  g.items.length === 1 ? "piece" : "pieces"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: "link-btn", onClick: () => go({ client: g.id, type: "All" }), children: [
+                  "Open client ",
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUpRight, { width: 14, height: 14 })
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Grid, { list: g.items, onOpen: openFrom(groupedList), showClient: false })
+            ] }, g.id)) : /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Grid, { list: indFiltered, onOpen: openFrom(indFiltered), showClient: false }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "folder-foot", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "btn btn--ghost", onClick: () => go({ industry: null, client: "all", type: "All" }), children: "\u2190 All industries" }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: "btn btn--accent", onClick: () => go({ industry: nextInd.id, client: "all", type: "All" }), children: [
+                "Next: ",
+                nextInd.name,
+                " ",
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUpRight, { width: 16, height: 16 })
+              ] })
+            ] })
+          ] })
+        )
       ] }),
-      open >= 0 && list[open] && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Viewer, { list, index: open, setIndex: setOpen, onClose: () => setOpen(-1) })
+      viewer && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Viewer, { list: viewer.list, index: viewer.index, setIndex: (f) => setViewer((v) => ({ ...v, index: typeof f === "function" ? f(v.index) : f })), onClose: () => setViewer(null) })
     ] });
   }
 
   // src/components/Sections.jsx
-  var import_react5 = __toESM(require_react(), 1);
+  var import_react6 = __toESM(require_react(), 1);
 
   // src/data/skills.js
   var skills = [
@@ -25099,176 +26183,165 @@
   ];
 
   // src/components/Sections.jsx
-  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
-  var Head = ({ num, label, children }) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "section-head", "data-reveal": true, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "eyebrow", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "mono", children: num }),
+  var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
+  var Head = ({ num, label, children }) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "section-head", "data-reveal": true, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "eyebrow", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "mono", children: num }),
       " / ",
       label
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h2", { className: "display", children })
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { className: "display", children })
   ] });
   function Metrics() {
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("section", { className: "metrics", "aria-label": "Results", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "metrics__grid", children: site.metrics.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { "data-reveal": true, style: { "--d": `${i * 50}ms` }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Counter, { value: m.value, suffix: m.suffix }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: m.label })
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("section", { className: "metrics", "aria-label": "Results", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ul", { className: "metrics__grid", children: site.metrics.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("li", { "data-reveal": true, style: { "--d": `${i * 50}ms` }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("strong", { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Counter, { value: m.value, suffix: m.suffix }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: m.label })
       ] }, m.label)) }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "footnote", children: "Figures from professional experience at CRM Enterprises and Flash Solutions." })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "footnote", children: "Figures from professional experience at CRM Enterprises and Flash Solutions." })
     ] }) });
   }
   function ToolLogo({ t }) {
     if (t.logo && toolLogos[t.logo]) {
-      return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "tool__logo", style: { color: t.color }, dangerouslySetInnerHTML: { __html: toolLogos[t.logo] } });
+      return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "tool__logo", style: { color: t.color }, dangerouslySetInnerHTML: { __html: toolLogos[t.logo] } });
     }
-    if (t.logo) return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "tool__logo", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { src: t.logo, alt: "" }) });
+    if (t.logo) return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "tool__logo", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("img", { src: t.logo, alt: "" }) });
     const letters = t.name.replace(/[^A-Za-z ]/g, "").split(" ").map((w) => w[0]).join("").slice(0, 2);
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "tool__logo tool__logo--mono", "aria-hidden": "true", children: letters });
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "tool__logo tool__logo--mono", "aria-hidden": "true", children: letters });
   }
   function Toolkit() {
     const doubled = [...site.toolkit, ...site.toolkit];
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("section", { className: "toolkit", "aria-labelledby": "tk-title", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container toolkit__head", "data-reveal": true, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("h2", { className: "display display--sm", id: "tk-title", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { className: "toolkit", "aria-labelledby": "tk-title", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "container toolkit__head", "data-reveal": true, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("h2", { className: "display display--sm", id: "tk-title", children: [
           "Built with",
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("br", {}),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {}),
           "the tools I trust."
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "muted", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "muted", children: [
           site.toolkit.length,
           " tools across ads, design, video and automation"
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "container", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "tools", children: site.toolkit.map((t, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { className: "tool", "data-reveal": true, style: { "--d": `${i % 8 * 40}ms` }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ToolLogo, { t }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "tool__name", children: t.name }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "tool__group", children: t.group })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "container", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ul", { className: "tools", children: site.toolkit.map((t, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("li", { className: "tool", "data-reveal": true, style: { "--d": `${i % 8 * 40}ms` }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ToolLogo, { t }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "tool__name", children: t.name }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "tool__group", children: t.group })
       ] }, t.name)) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "marquee", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "marquee__track", children: doubled.map((t, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "marquee", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "marquee__track", children: doubled.map((t, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { children: [
         t.name,
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("i", { children: "\u2726" })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("i", { children: "\u2726" })
       ] }, i)) }) })
     ] });
   }
   function Services() {
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("section", { className: "section", id: "services", "aria-labelledby": "svc-title", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { id: "svc-title", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Head, { num: "02", label: "What I do", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("section", { className: "section", id: "services", "aria-labelledby": "svc-title", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { id: "svc-title", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Head, { num: "02", label: "What I do", children: [
         "Six ways I ",
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "accent", children: "grow brands." })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "accent", children: "grow brands." })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "services", children: site.services.map((s, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { className: "service", "data-reveal": true, style: { "--d": `${i % 3 * 70}ms` }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "mono service__num", children: String(i + 1).padStart(2, "0") }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: s.title }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { children: s.text })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ul", { className: "services", children: site.services.map((s, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("li", { className: "service", "data-reveal": true, style: { "--d": `${i % 3 * 70}ms` }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "mono service__num", children: String(i + 1).padStart(2, "0") }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h3", { children: s.title }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: s.text })
       ] }, s.title)) })
     ] }) });
   }
   function About() {
     const { identity, education } = site;
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("section", { className: "section about", id: "about", "aria-labelledby": "about-title", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { id: "about-title", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Head, { num: "03", label: "Behind the work", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("section", { className: "section about", id: "about", "aria-labelledby": "about-title", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { id: "about-title", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Head, { num: "03", label: "Behind the work", children: [
         "More than posts. ",
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("br", {}),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "accent", children: "Building pipelines." })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {}),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "accent", children: "Building pipelines." })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "about__grid", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "about__bio", "data-reveal": true, children: [
-          identity.about.map((p, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: i === 0 ? "lead" : "", children: p }, i)),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "langs", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "label", children: "Languages" }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { children: identity.languages.map((l) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: l.name }),
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "mono", children: l.level })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "about__grid", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "about__bio", "data-reveal": true, children: [
+          identity.about.map((p, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: i === 0 ? "lead" : "", children: p }, i)),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "langs", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "label", children: "Languages" }),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ul", { children: identity.languages.map((l) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("li", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: l.name }),
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "mono", children: l.level })
             ] }, l.name)) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "muted small", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "muted small", children: [
             "Interests: ",
             identity.interests.join(" \xB7 ")
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "about__side", "data-reveal": true, style: { "--d": "100ms" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "label", children: "Education & learning" }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "edu", children: education.map((e) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { children: e.title }),
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "mono", children: e.period })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "about__side", "data-reveal": true, style: { "--d": "100ms" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "label", children: "Education & learning" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ul", { className: "edu", children: education.map((e) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("li", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("strong", { children: e.title }),
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "mono", children: e.period })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { children: e.text })
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: e.text })
           ] }, e.title)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "label", children: "Expertise & skills" }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "skills", children: skills.map((g) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("details", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("summary", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "label", children: "Expertise & skills" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "skills", children: skills.map((g) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("details", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("summary", { children: [
               g.group,
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Plus, { className: "i-plus", width: 16, height: 16 }),
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Minus, { className: "i-minus", width: 16, height: 16 })
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Plus, { className: "i-plus", width: 16, height: 16 }),
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Minus, { className: "i-minus", width: 16, height: 16 })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "chips chips--static", children: g.items.map((it) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("li", { className: "chip", children: it }, it)) })
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ul", { className: "chips chips--static", children: g.items.map((it) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("li", { className: "chip", children: it }, it)) })
           ] }, g.group)) })
         ] })
       ] })
     ] }) });
   }
   function Process() {
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("section", { className: "section process", "aria-labelledby": "proc-title", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "eyebrow", "data-reveal": true, id: "proc-title", children: "From brief to results" }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ol", { className: "process__steps", children: site.processSteps.map((s, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { "data-reveal": true, style: { "--d": `${i * 80}ms` }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "mono", children: String(i + 1).padStart(2, "0") }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: s.title }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { children: s.text })
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("section", { className: "section process", "aria-labelledby": "proc-title", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "eyebrow", "data-reveal": true, id: "proc-title", children: "From brief to results" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ol", { className: "process__steps", children: site.processSteps.map((s, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("li", { "data-reveal": true, style: { "--d": `${i * 80}ms` }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "mono", children: String(i + 1).padStart(2, "0") }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h3", { children: s.title }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: s.text })
       ] }, s.title)) }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("blockquote", { className: "quote", "data-reveal": true, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "quote__mark", "aria-hidden": "true", children: "\u201C" }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("blockquote", { className: "quote", "data-reveal": true, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "quote__mark", "aria-hidden": "true", children: "\u201C" }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { children: [
           site.identity.quote[0],
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("br", {}),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "accent", children: site.identity.quote[1] })
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {}),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "accent", children: site.identity.quote[1] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("cite", { className: "script", children: site.identity.firstName })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("cite", { className: "script", children: site.identity.firstName })
       ] })
     ] }) });
   }
-  var rich = (s) => s.split(/\*\*(.+?)\*\*/g).map((part, i) => i % 2 ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { className: "accent", children: part }, i) : part);
-  function Job({ job, index }) {
-    const [open, setOpen] = (0, import_react5.useState)(index === 0);
-    const visible = open ? job.highlights : job.highlights.slice(0, 3);
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { className: "job", "data-reveal": true, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "job__period mono", children: job.period }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "job__body", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: job.role }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "job__company", children: [
+  var rich = (s) => s.split(/\*\*(.+?)\*\*/g).map((part, i) => i % 2 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("strong", { className: "accent", children: part }, i) : part);
+  function Job({ job }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("li", { className: "job", "data-reveal": true, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "job__period mono", children: job.period }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "job__body", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h3", { children: job.role }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "job__company", children: [
           job.company,
           " ",
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "muted", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "muted", children: [
             "\xB7 ",
             job.location
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "job__list", children: visible.map((h, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("li", { children: rich(h) }, i)) }),
-        job.highlights.length > 3 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "link-btn", onClick: () => setOpen(!open), "aria-expanded": open, children: open ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Minus, { width: 14, height: 14 }),
-          " Show less"
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Plus, { width: 14, height: 14 }),
-          " ",
-          job.highlights.length - 3,
-          " more highlights"
-        ] }) })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ul", { className: "job__list", children: job.highlights.map((h, i) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("li", { children: rich(h) }, i)) })
       ] })
     ] });
   }
   function Experience() {
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("section", { className: "section", id: "experience", "aria-labelledby": "exp-title", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { id: "exp-title", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(Head, { num: "04", label: "The journey", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("section", { className: "section", id: "experience", "aria-labelledby": "exp-title", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { id: "exp-title", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Head, { num: "04", label: "The journey", children: [
         "Keep creating. ",
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "accent", children: "Keep converting." })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "accent", children: "Keep converting." })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "label", "data-reveal": true, children: "Experience & milestones" }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ol", { className: "jobs", children: experience.map((j, i) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Job, { job: j, index: i }, j.company)) })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "label", "data-reveal": true, children: "Experience & milestones" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ol", { className: "jobs", children: experience.map((j) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Job, { job: j }, j.company)) })
     ] }) });
   }
   function Contact() {
     const { contact, identity } = site;
-    const [form, setForm] = (0, import_react5.useState)({ name: "", email: "", message: "" });
+    const [form, setForm] = (0, import_react6.useState)({ name: "", email: "", message: "" });
     const wa = `https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(contact.whatsappMessage)}`;
     const submit = (e) => {
       e.preventDefault();
@@ -25280,125 +26353,125 @@ ${form.email}`;
       window.location.href = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
     const items = [
-      { label: "Email", value: contact.email, href: `mailto:${contact.email}`, icon: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Mail, { width: 18, height: 18 }) },
-      { label: "Phone / WhatsApp", value: contact.phone, href: wa, icon: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Whatsapp, { width: 18, height: 18 }), ext: true },
-      { label: "LinkedIn", value: contact.linkedinLabel, href: contact.linkedin, icon: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Linkedin, { width: 18, height: 18 }), ext: true },
-      { label: "Portfolio", value: "Google Drive folder", href: site.shortPortfolioLink, icon: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Folder, { width: 18, height: 18 }), ext: true },
-      { label: "Based in", value: `${identity.location} \xB7 Open to roles & freelance`, icon: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(MapPin, { width: 18, height: 18 }) }
+      { label: "Email", value: contact.email, href: `mailto:${contact.email}`, icon: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Mail, { width: 18, height: 18 }) },
+      { label: "Phone / WhatsApp", value: contact.phone, href: wa, icon: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Whatsapp, { width: 18, height: 18 }), ext: true },
+      { label: "LinkedIn", value: contact.linkedinLabel, href: contact.linkedin, icon: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Linkedin, { width: 18, height: 18 }), ext: true },
+      { label: "Portfolio", value: "Google Drive folder", href: site.shortPortfolioLink, icon: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Folder, { width: 18, height: 18 }), ext: true },
+      { label: "Based in", value: `${identity.location} \xB7 Open to roles & freelance`, icon: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(MapPin, { width: 18, height: 18 }) }
     ];
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("section", { className: "section contact", id: "contact", "aria-labelledby": "contact-title", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "eyebrow", "data-reveal": true, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "mono", children: "05" }),
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("section", { className: "section contact", id: "contact", "aria-labelledby": "contact-title", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "eyebrow", "data-reveal": true, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "mono", children: "05" }),
         " / Your next campaign"
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("h2", { className: "display display--xl", id: "contact-title", "data-reveal": true, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("h2", { className: "display display--xl", id: "contact-title", "data-reveal": true, children: [
         "Let\u2019s grow",
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("br", {}),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {}),
         "your ",
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "accent", children: "brand." })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "accent", children: "brand." })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "contact__grid", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { "data-reveal": true, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "lead", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "contact__grid", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "data-reveal": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "lead", children: [
             "Got a launch, a campaign or a team to train?",
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("br", {}),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {}),
             "Let\u2019s make something people notice, and numbers that move."
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "contact__ctas", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { className: "btn btn--accent", href: wa, target: "_blank", rel: "noopener noreferrer", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Whatsapp, { width: 16, height: 16 }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "contact__ctas", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("a", { className: "btn btn--accent", href: wa, target: "_blank", rel: "noopener noreferrer", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Whatsapp, { width: 16, height: 16 }),
               " Chat on WhatsApp"
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { className: "btn btn--ghost", href: `mailto:${contact.email}`, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Mail, { width: 16, height: 16 }),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("a", { className: "btn btn--ghost", href: `mailto:${contact.email}`, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Mail, { width: 16, height: 16 }),
               " Email me"
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { className: "contact__list", children: items.map((it) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("li", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "label", children: it.label }),
-            it.href ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { href: it.href, ...it.ext ? { target: "_blank", rel: "noopener noreferrer" } : {}, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("ul", { className: "contact__list", children: items.map((it) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("li", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "label", children: it.label }),
+            it.href ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("a", { href: it.href, ...it.ext ? { target: "_blank", rel: "noopener noreferrer" } : {}, children: [
               it.icon,
               it.value,
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUpRight, { width: 14, height: 14, className: "arrow" })
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowUpRight, { width: 14, height: 14, className: "arrow" })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { children: [
               it.icon,
               it.value
             ] })
           ] }, it.label)) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("form", { className: "form", onSubmit: submit, "data-reveal": true, style: { "--d": "100ms" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "form__title", children: "Tell me about your project" }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: "Name" }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("input", { required: true, value: form.name, onChange: (e) => setForm({ ...form, name: e.target.value }), autoComplete: "name" })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("form", { className: "form", onSubmit: submit, "data-reveal": true, style: { "--d": "100ms" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "form__title", children: "Tell me about your project" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "Name" }),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("input", { required: true, value: form.name, onChange: (e) => setForm({ ...form, name: e.target.value }), autoComplete: "name" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: "Email" }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("input", { required: true, type: "email", value: form.email, onChange: (e) => setForm({ ...form, email: e.target.value }), autoComplete: "email" })
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "Email" }),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("input", { required: true, type: "email", value: form.email, onChange: (e) => setForm({ ...form, email: e.target.value }), autoComplete: "email" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: "Message" }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("textarea", { required: true, rows: "5", value: form.message, onChange: (e) => setForm({ ...form, message: e.target.value }) })
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "Message" }),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("textarea", { required: true, rows: "5", value: form.message, onChange: (e) => setForm({ ...form, message: e.target.value }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: "btn btn--accent btn--block", type: "submit", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("button", { className: "btn btn--accent btn--block", type: "submit", children: [
             "Open in my email app ",
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUpRight, { width: 16, height: 16 })
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowUpRight, { width: 16, height: 16 })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "muted small", children: "This opens your email app with the message ready to send." })
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "muted small", children: "This opens your email app with the message ready to send." })
         ] })
       ] })
     ] }) });
   }
   function Footer() {
     const { identity, contact } = site;
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("footer", { className: "footer", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "container footer__inner", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "footer__word", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("footer", { className: "footer", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "container footer__inner", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "footer__word", children: [
         identity.displayName.toUpperCase(),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "accent", children: "." })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "accent", children: "." })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "footer__row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "muted small", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "footer__row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "muted small", children: [
           "\xA9 ",
           (/* @__PURE__ */ new Date()).getFullYear(),
           " ",
           identity.fullName
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("nav", { className: "footer__links", "aria-label": "Social", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("a", { href: contact.linkedin, target: "_blank", rel: "noopener noreferrer", children: "LinkedIn" }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("a", { href: `mailto:${contact.email}`, children: "Email" }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("a", { href: site.shortPortfolioLink, target: "_blank", rel: "noopener noreferrer", children: "Portfolio" })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("nav", { className: "footer__links", "aria-label": "Social", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("a", { href: contact.linkedin, target: "_blank", rel: "noopener noreferrer", children: "LinkedIn" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("a", { href: `mailto:${contact.email}`, children: "Email" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("a", { href: site.shortPortfolioLink, target: "_blank", rel: "noopener noreferrer", children: "Portfolio" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("a", { href: "#top", className: "to-top", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("a", { href: "#top", className: "to-top", children: [
           "Back to top ",
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowUp, { width: 14, height: 14 })
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowUp, { width: 14, height: 14 })
         ] })
       ] })
     ] }) });
   }
 
   // src/main.jsx
-  var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
   function App() {
     const [motionOn, setMotionOn] = useMotionSetting();
     useRevealAll([]);
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(MotionContext.Provider, { value: motionOn, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("a", { href: "#main", className: "skip", children: "Skip to content" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Header, { motionOn, setMotionOn }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("main", { id: "main", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Hero, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Work, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Metrics, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Toolkit, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Services, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(About, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Process, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Experience, {}),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Contact, {})
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(MotionContext.Provider, { value: motionOn, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("a", { href: "#main", className: "skip", children: "Skip to content" }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Header, { motionOn, setMotionOn }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("main", { id: "main", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Hero, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Work, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Metrics, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Toolkit, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Services, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(About, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Process, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Experience, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Contact, {})
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Footer, {})
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Footer, {})
     ] });
   }
-  (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_react6.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(App, {}) }));
+  (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_react7.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(App, {}) }));
 })();
 /*! Bundled license information:
 

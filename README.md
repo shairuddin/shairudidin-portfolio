@@ -27,9 +27,10 @@ To publish, upload the **contents of `dist/`** to any static host (Netlify, Verc
 | Experience timeline | `src/data/experience.js` |
 | Skill groups | `src/data/skills.js` |
 | Work titles, clients, featured items, hiding an item | `scripts/work-overrides.json`, then run `node scripts/generate-projects.mjs` |
+| Industries (work folders) and which clients are in each | `INDUSTRIES` in `scripts/generate-projects.mjs`, then run `node scripts/generate-projects.mjs` |
 | Colours, fonts, spacing | `src/styles.css` (tokens at the top) |
 | Toolkit logos and names | `src/config/site.js` (`toolkit`), icons in `src/data/toolLogos.js` |
-| Portrait illustration | `public/assets/portrait.svg` |
+| Hero 3D avatar | `src/components/Avatar3D.jsx`; layers in `public/assets/avatar/` (character `avatar.webp`, depth map `depth.webp`, floating cards `card-*.webp`). The older flat illustration is kept at `public/assets/portrait.svg` |
 | CV download | `public/assets/Shaik_Siruddin_Pasha_CV.pdf` |
 
 ## Work samples
@@ -60,10 +61,18 @@ lettered tile. To use an official logo, save it (SVG or PNG) in `public/assets/t
 `logo: "assets/tools/canva.svg"` on that tool in `src/config/site.js`, and run `npm run build`.
 Logos are trademarks of their owners and are shown only to name the tools used.
 
+## 3D avatar notes
+
+The avatar is a 2.5D effect built from the single 3D render: the character is drawn with WebGL and
+displaced by a depth map so the head turns in perspective, and the five UI cards are separate layers in a
+CSS 3D scene. Browsers block WebGL from reading image files when a page is opened straight from disk, so on
+`file://` the character stays still (the cards and tilt still animate). Through `npm run dev` or once hosted,
+the full effect runs. It switches off with the Motion toggle and for reduced-motion users.
+
 ## Features
 
-- Hero with large "PORTFOLIO" type, animated faceless illustration, live counters
-- Filterable, searchable masonry grid (Video & Reels, Graphic Design, Logo Design, Marketing Plans, Influencer & Social, AI Voiceovers)
+- Hero with large "PORTFOLIO" type, 2.5D animated 3D avatar (WebGL depth parallax, floating cards at different depths, follows the mouse, idle sway on touch), live counters
+- Work organised like folders: Highlights, then 6 industry folders (Healthcare, Education, Retail & Consumer, Tech/AI & Creators, Real Estate & Services, Events & Community). Inside a folder, work is grouped by client and can be filtered by client and by type. A "By type" view and a global search are also available. Every folder has its own link (e.g. `#work/healthcare/arogya-hospitals`) and the browser Back button works
 - Muted reel previews on hover (desktop), full-screen viewer with keyboard arrows / Esc
 - Results strip, toolkit marquee, services, about, process, expandable experience timeline
 - WhatsApp and email contact, mailto form, CV download

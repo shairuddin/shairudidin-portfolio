@@ -151,21 +151,14 @@ export function Process() {
 
 const rich = (s) => s.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? <strong key={i} className="accent">{part}</strong> : part));
 
-function Job({ job, index }) {
-  const [open, setOpen] = useState(index === 0);
-  const visible = open ? job.highlights : job.highlights.slice(0, 3);
+function Job({ job }) {
   return (
     <li className="job" data-reveal>
       <div className="job__period mono">{job.period}</div>
       <div className="job__body">
         <h3>{job.role}</h3>
         <p className="job__company">{job.company} <span className="muted">· {job.location}</span></p>
-        <ul className="job__list">{visible.map((h, i) => <li key={i}>{rich(h)}</li>)}</ul>
-        {job.highlights.length > 3 && (
-          <button className="link-btn" onClick={() => setOpen(!open)} aria-expanded={open}>
-            {open ? <><Minus width={14} height={14} /> Show less</> : <><Plus width={14} height={14} /> {job.highlights.length - 3} more highlights</>}
-          </button>
-        )}
+        <ul className="job__list">{job.highlights.map((h, i) => <li key={i}>{rich(h)}</li>)}</ul>
       </div>
     </li>
   );
@@ -177,7 +170,7 @@ export function Experience() {
       <div className="container">
         <div id="exp-title"><Head num="04" label="The journey">Keep creating. <span className="accent">Keep converting.</span></Head></div>
         <p className="label" data-reveal>Experience & milestones</p>
-        <ol className="jobs">{experience.map((j, i) => <Job key={j.company} job={j} index={i} />)}</ol>
+        <ol className="jobs">{experience.map((j) => <Job key={j.company} job={j} />)}</ol>
       </div>
     </section>
   );

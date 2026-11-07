@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { site } from "../config/site.js";
 import { Counter, useMotion } from "../lib/motion.js";
 import { ArrowDown, Download, MapPin } from "./Icons.jsx";
+import Avatar3D from "./Avatar3D.jsx";
 
 export default function Hero() {
   const { identity, heroStats } = site;
@@ -35,7 +36,7 @@ export default function Hero() {
       <div className="hero__stage">
         <div className="hero__bigword" aria-hidden="true">{identity.headlineWord}</div>
         <div className="hero__portrait" ref={portraitRef}>
-          <img src={identity.portrait} alt="Illustrated portrait of Siruddin" width="600" height="800" fetchpriority="high" />
+          <Avatar3D alt={identity.portraitAlt} />
         </div>
 
         <div className="hero__copy">
